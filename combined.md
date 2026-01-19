@@ -2003,8 +2003,7 @@ Use a ring buffer when you want “latest N events” with bounded memory.
 ```js
 log.createBucket('net', {
   // Example: keep only the last 500 records
-  // (Exact option name depends on Worker implementation.)
-  maxRecords: 500
+  max: 500
 });
 
 log.log('net', { type: 'request', url: '/api/me' });
@@ -2516,7 +2515,7 @@ No configuration required.
 Each bucket stores records in memory.
 
 ```js
-const worker = log.getBucket('errors');
+const worker = log.bucket('errors');
 
 console.log(worker.records);
 ```
