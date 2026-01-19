@@ -16,116 +16,223 @@
 // - per-bucket hooks
 
 import Worker            from "./Worker.js";
-//leave in the event I need it later
+//leave in the event I need it later. 
 //import { CONSOLE_LEVEL } from './constants.js';
 import utils             from './utils.js';
 
 export default class Manager {
     /**
-     * Create a Manager.
+     * Create a Manager instance.
      *
-     * Manager is a coordinator that owns a registry of named Worker instances
-     * ("buckets") and provides shared defaults and policy used when creating
-     * new buckets.
+     * The Manager acts as a coordinator and forwarding gate for log operations.
+     * It does not store records itself; instead, it routes log calls to named
+     * Worker buckets when enabled.
      *
-     * Responsibilities:
-     * - Maintain a Worker registry (`this.workers`)
-     * - Provide shared defaults (enabled, console policy, hooks, clock, workspace)
-     * - Provide a small facade API that forwards calls to specific buckets
-     *
-     * Notes:
-     * - Manager does NOT auto-create buckets in `bucket()` / `to()` / log methods.
-     * - If a bucket does not exist, log methods return `null` (or `[]` for `get()`).
+     * Key semantics:
+     * - `enabled` is a Manager-level forwarding gate only.
+     *   Disabling the Manager prevents `log/info/warn/error` from forwarding,
+     *   but does not mutate or affect existing Workers or Worker defaults.
+     * - Worker creation defaults are derived from `opts.worker` via
+     *   `setWorkerConfig()` and are independent of Manager enable state.
+     * - The resolved Worker environment configuration is cached internally
+     *   and reused for subsequent bucket creation.
      *
      * @param {Object} [opts]
-     * @param {string} [opts.name='log'] Manager label/prefix for metadata.
-     * @param {boolean} [opts.enabled=true] Master enable switch for Manager forwarding.
-     * @param {number|string|boolean|null|undefined} [opts.console=CONSOLE_LEVEL.OFF]
-     *        Default console policy applied to newly created Workers (unless overridden).
-     * @param {Function|string|any} [opts.onEvent=null]
-     *        Default hook applied to newly created Workers (unless overridden).
-     *        Resolved via `utils._getFunction(...)`, which uses `lib.func.get` when available
-     *        (but remains usable without `lib`).
-     * @param {Function|any} [opts.clock=Date.now] Default clock applied to Workers.
-     * @param {number} [opts.baseSkip=3] Stack skip depth baseline for trace utilities.
-     * @param {RegExp|Function|null} [opts.prune=null] Optional stack prune rule.
-     * @param {boolean} [opts.throwOnError=true]
-     *        When true, `error()` throws after recording.
-     * @param {Object} [opts.workspace]
-     *        Default workspace object passed into Worker hooks/printers (unless overridden).
+     * @param {string} [opts.name='log']
+     *        Logical name of this Manager (informational only).
+     * @param {boolean} [opts.enabled=true]
+     *        Manager-level forwarding gate.
+     * @param {boolean} [opts.throwOnError=false]
+     *        When true, `error()` throws after handling.
+     * @param {Object} [opts.worker]
+     *        Default Worker environment configuration applied to newly created
+     *        buckets (independent of Manager enable state).
      * @param {Object<string, Object>} [opts.buckets]
-     *        Map of `bucketName -> Worker options` used to pre-create Workers.
-     * @param {boolean} [opts.clone=false]
-     *        Default cloning policy applied to newly created Workers,
-     *        unless overridden per bucket via `createBucket(name, { clone })`
-     *        or per call via `emit(..., { clone })`.
+     *        Map of `bucketName -> Worker options` used to eagerly create
+     *        initial buckets at construction time.
      */
     constructor(opts = {}) {
 	this.opts = opts;
 
 	this.name = String(opts.name || "log");
+
+	// Manager-level forwarding gate ONLY
 	this.enabled = opts.enabled !== false;
 
-	// normalize global console policy (stored here; enforced during emit)
-	this.console = utils._normalizeConsoleLevel(opts.console);
+	// Manager policy (not a worker default)
+	this.throwOnError = opts.throwOnError === true;
 
-	// global hook (supports lib.func.get when available)
-	this.onEvent = utils._getFunction(opts.onEvent, "onEvent");
+	// Worker environment defaults (unrelated to Manager.enabled)
+	this._workerConfig = null;
+	this.setWorkerConfig(opts.worker);
 
-	// clock (strict)
-	this.clock = utils._getClock(opts.clock);
-
-	// stack handling
-	this.baseSkip = Number.isFinite(opts.baseSkip) ? opts.baseSkip : 3;
-	this.prune = opts.prune || null;
-
-	this.throwOnError = opts.throwOnError !== false;
-
-	this.workspace = (opts && typeof opts.workspace === "object" && opts.workspace)
-	    ? opts.workspace
-	    : {};
-	//for avoidance of mutation in a bucket
-	this.clone = opts.clone === true;
-	
 	/** @type {Map<string, Worker>} */
 	this.workers = new Map();
 
 	// install initial buckets
 	const buckets = (opts.buckets && typeof opts.buckets === "object") ? opts.buckets : null;
-
 	if (buckets) {
             for (const [bucketName, wopts] of Object.entries(buckets)) {
 		this.createBucket(bucketName, wopts || {});
             }
 	}
+    }
 
+    /**
+     * Set the Manager-level forwarding gate.
+     *
+     * When disabled, Manager logging methods (`log`, `info`, `warn`, `error`)
+     * do not forward to Workers and return null.
+     *
+     * Notes:
+     * - This does not modify Worker state.
+     * - This does not affect Worker defaults or future bucket creation.
+     *
+     * @param {boolean} [on=true] Enable or disable Manager forwarding.
+     */
+    setEnabled(on = true) {
+	this.enabled = !!on;
+    }
+    /**
+     * Enable Manager-level forwarding.
+     *
+     * Equivalent to `setEnabled(true)`.
+     * Does not modify Worker state.
+     */
+    enable() {
+	this.enabled = true;
+    }
+    /**
+     * Disable Manager-level forwarding.
+     *
+     * When disabled, Manager logging methods do not forward to Workers.
+     * Equivalent to `setEnabled(false)`.
+     * Does not modify Worker state.
+     */
+    disable() {
+	this.enabled = false;
+    }
+    /**
+     * Test whether Manager-level forwarding is enabled.
+     *
+     * @returns {boolean} True if Manager forwarding is enabled.
+     */
+    isEnabled() {
+	return this.enabled === true;
+    }
+
+    /**
+     * Define or update the default Worker environment configuration.
+     *
+     * This configuration is cached on the Manager and used as the base set of
+     * options when creating new Worker buckets. It does not affect existing
+     * Workers.
+     *
+     * Semantics:
+     * - Worker defaults are independent of Manager enable state.
+     * - Configuration is worker-scoped only (no inheritance from Manager options).
+     * - Omitted keys preserve previously cached Worker defaults.
+     * - On first call, hard defaults are applied where values are not provided.
+     * - Values are normalized/resolved once and stored on the Manager.
+     * - Per-bucket options provided to `createBucket()` may override these defaults.
+     *
+     * Notes:
+     * - `workspace` is passed through as-is; Workers are responsible for
+     *   sanitizing workspace values.
+     * - Function references (`onEvent`, `onPrint`) are resolved best-effort
+     *   at configuration time.
+     *
+     * @param {Object} [cfg]
+     *        Worker environment configuration.
+     * @param {boolean} [cfg.enabled=true]
+     *        Default enabled state for newly created Workers.
+     * @param {number|string} [cfg.max=0]
+     *        Default storage limit for Workers.
+     * @param {number|string|boolean} [cfg.console]
+     *        Default console emission policy for Workers.
+     * @param {Function|string|any} [cfg.onEvent]
+     *        Default per-record hook for Workers.
+     * @param {Function|string|any} [cfg.clock]
+     *        Default clock function for Workers.
+     * @param {any} [cfg.workspace]
+     *        Default workspace value passed to Workers.
+     * @param {boolean} [cfg.clone]
+     *        Default cloning policy for Workers.
+     * @param {Function|string|any} [cfg.onPrint]
+     *        Default printer implementation for Workers.
+     *
+     * @returns {Object}
+     *          The normalized and cached Worker environment configuration.
+     */
+    setWorkerConfig(cfg = {}) {
+	const w = (cfg && typeof cfg === "object") ? cfg : {};
+
+	// previous worker defaults (NOT Manager opts)
+	const prev = (this._workerConfig && typeof this._workerConfig === "object")
+              ? this._workerConfig
+              : {};
+
+	const rawConsole = ("console" in w) ? w.console : prev.console;
+	const rawOnEvent = ("onEvent" in w) ? w.onEvent : prev.onEvent;
+	const rawClock   = ("clock"   in w) ? w.clock   : prev.clock;
+
+	const workspace  = ("workspace" in w) ? w.workspace : prev.workspace;
+
+	this._workerConfig = {
+            // IMPORTANT: default worker.enabled is independent of Manager.enabled
+            enabled: ("enabled" in w) ? (w.enabled !== false) : (prev.enabled ?? true),
+
+            // optional storage default
+            max: ("max" in w) ? w.max : (prev.max ?? 0),
+
+            // normalized/resolved (worker-only, but defaults from prior worker config)
+            console: utils._normalizeConsoleLevel(rawConsole),
+            onEvent: utils._getFunction(rawOnEvent, "onEvent"),
+            clock: utils._getClock(rawClock),
+
+            // opaque user workspace (Worker may sanitize if desired)
+            workspace: workspace ?? {},
+
+            // cloning (only true means true)
+            clone: ("clone" in w) ? (w.clone === true) : (prev.clone === true),
+
+            // optional printer default
+            onPrint: ("onPrint" in w)
+		? utils._getFunction(w.onPrint, "onPrint")
+		: (prev.onPrint ?? null),
+	};
+
+	return this._workerConfig;
     }
     // ---------------------------------------------------------------------------
     // Bucket management
     // ---------------------------------------------------------------------------
-
     /**
      * Create (or replace) a Worker bucket.
      *
-     * Merges Manager defaults into the Worker options unless explicitly overridden:
-     * - `console`, `clock`, `enabled`, `onEvent`, `workspace`, `clone`
+     * Worker options are built by merging the Manager's cached Worker environment
+     * defaults with per-bucket overrides provided in `opts`.
      *
-     * Workspace precedence:
-     * - If `opts` has an own `workspace` property (even if `undefined` or `null`),
-     *   that value is used for the bucket.
-     * - Otherwise Manager `this.workspace` is used.
+     * Precedence:
+     * - Per-bucket overrides (`opts`) win over environment defaults.
+     * - `name` is always enforced from the `name` argument.
+     * - If `opts` has an own `workspace` key, that value is used; otherwise the
+     *   environment workspace is used.
+     * - If `opts` has an own `clone` key, that value determines clone (only true
+     *   enables); otherwise the environment clone policy is used.
      *
-     * Clone precedence:
-     * - If `opts` has an own `clone` property, that value becomes the bucket default.
-     * - Otherwise Manager `this.clone` is used.
+     * Safety:
+     * - Non-object `opts` values are treated as `{}` to avoid crashes.
+     * - Console, hook, printer, and clock values are re-normalized after merge
+     *   to account for per-bucket raw overrides.
      *
      * Replacement behavior:
-     * - If a bucket with the same name already exists, it is replaced in the registry
-     *   via Map overwrite (no teardown of the previous Worker is performed).
+     * - If a bucket with the same name already exists, it is replaced in the
+     *   internal registry via Map overwrite (no teardown is performed).
      *
      * Bucket name rules:
      * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
      * - All other values throw.
      *
      * @param {string|number} name Bucket name (required).
@@ -136,35 +243,25 @@ export default class Manager {
     createBucket(name, opts = {}) {
 	const key = utils.validateBucketName(name);
 
-	// normalize clone explicitly (only true means true)
-	const hasClone = ("clone" in opts);
-	const clone =
-              hasClone
-              ? opts.clone === true
-              : this.clone === true;
+	const env = this._workerConfig || this.setWorkerConfig(this.opts.worker);
 
-	const merged = Object.assign(
-            {},
-            {
-		console: this.console,
-		clock: this.clock,
-		enabled: this.enabled,
-		onEvent: this.onEvent,
+	// IMPORTANT: never allow non-object/null options to crash bucket creation
+	const o = (opts && typeof opts === "object") ? opts : {};
 
-		// defaults
-		workspace: this.workspace,
-		clone
-            },
-            opts,
-            {
-		// enforce name last
-		name: key,
+	const hasWorkspace = Object.prototype.hasOwnProperty.call(o, "workspace");
+	const hasClone     = Object.prototype.hasOwnProperty.call(o, "clone");
 
-		// enforce precedence by key presence
-		workspace: ("workspace" in opts) ? opts.workspace : this.workspace,
-		clone
-            }
-	);
+	const merged = Object.assign({}, env, o, {
+            name: key,
+            workspace: hasWorkspace ? o.workspace : env.workspace,
+            clone: hasClone ? (o.clone === true) : (env.clone === true)
+	});
+
+	// If per-bucket overrides provided raw values, normalize again safely
+	merged.console = utils._normalizeConsoleLevel(merged.console);
+	merged.onEvent = utils._getFunction(merged.onEvent, "onEvent");
+	merged.onPrint = utils._getFunction(merged.onPrint, "onPrint");
+	merged.clock   = utils._getClock(merged.clock);
 
 	const worker = new Worker(merged);
 	this.workers.set(worker.name, worker);
@@ -190,7 +287,7 @@ export default class Manager {
      */
     bucket(name) {
 	const key = utils.validateBucketName(name,false);
-	if(!key) return null;
+	if(key===null) return null;
 	return this.workers.get(key) || null;
     }
 
@@ -221,18 +318,25 @@ export default class Manager {
      * Configure a bucket at runtime (creates bucket if missing).
      *
      * If the bucket exists:
-     * - Applies `patch` via `Worker.configure(patch)`.
+     * - Applies the runtime portion of `patch` via `Worker.configure(patch)`.
+     * - Creation-only options (e.g. `clone`) are ignored for existing buckets.
      *
      * If the bucket does not exist:
-     * - Creates it first, with workspace handling:
+     * - Creates it first, with creation-time handling:
      *   - If `patch` has an own `workspace` property (even if `undefined`/`null`),
      *     that value is used during creation.
-     *   - Otherwise uses Manager `this.workspace`.
-     * - Then applies the full `patch` via `Worker.configure(patch)`.
+     *   - Otherwise uses the Manager's Worker environment default workspace
+     *     (from `setWorkerConfig(...)`).
+     *   - If `patch` has an own `clone` property, it is applied at creation time.
+     * - Then applies the remaining runtime options via `Worker.configure(...)`.
+     *
+     * Notes:
+     * - Non-object `patch` values are forwarded directly to `Worker.configure`
+     *   and may throw.
      *
      * Bucket name rules:
      * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
      * - All other values throw.
      *
      * @param {string|number} name Bucket name (required).
@@ -243,22 +347,32 @@ export default class Manager {
     configureBucket(name, patch = {}) {
 	const key = utils.validateBucketName(name);
 
-	// Detect explicit workspace override (even if undefined/null)
+	const isObj = patch && typeof patch === "object";
+
+	// Detect explicit overrides (even if undefined/null/false)
 	const hasWorkspace =
-              patch && typeof patch === "object" &&
-              Object.prototype.hasOwnProperty.call(patch, "workspace");
+              isObj && Object.prototype.hasOwnProperty.call(patch, "workspace");
 
-	// Ensure bucket exists, passing workspace override only on creation
-	const w = this.ensureBucket(
-            key,
-            hasWorkspace ? { workspace: patch.workspace } : {}
-	);
+	const hasClone =
+              isObj && Object.prototype.hasOwnProperty.call(patch, "clone");
 
-	// Apply runtime patch to the worker (including workspace if provided)
-	w.configure(patch);
+	// Creation-only opts (used only if bucket is missing)
+	const createOpts = {};
+	if (hasWorkspace) createOpts.workspace = patch.workspace;
+	if (hasClone) createOpts.clone = (patch.clone === true);
+
+	const w = this.ensureBucket(key, createOpts);
+
+	// Apply runtime patch keys (exclude creation-only `clone`)
+	if (isObj && hasClone) {
+            const { clone, ...rest } = patch;
+            w.configure(rest);
+	} else {
+            w.configure(patch);
+	}
 
 	return w;
-    }    
+    }
     // ---------------------------------------------------------------------------
     // Logging API (structured + optional console)
     // ---------------------------------------------------------------------------
@@ -284,105 +398,155 @@ export default class Manager {
     }
 
     /**
-     * Forward a `log` record to an existing bucket.
+     * Forward a `log` record to a bucket (soft runtime operation).
      *
      * Behavior:
      * - If Manager is disabled => returns null
-     * - If bucket does not exist => returns null
-     * - Otherwise forwards to `Worker.log(data, opts)`
+     * - If bucket name is invalid or bucket does not exist => returns null
+     * - Otherwise forwards to `Worker.log(data, opts)` and returns the stored record
      *
      * Bucket name rules:
      * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
-     * - All other values throw.
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
+     * - All other values are treated as invalid (soft failure).
      *
-     * @param {string|number} bucketName Existing bucket name.
+     * @param {string|number} bucketName Bucket name.
      * @param {any} data Payload to log.
      * @param {Object} [opts] Forwarded to Worker.
-     * @returns {Object|null} The stored record, or null if dropped/missing bucket.
-     * @throws {Error} If `bucketName` is invalid.
+     * @returns {Object|null}
+     *        The stored record, or null if dropped or bucket is missing/invalid.
      */
     log(bucketName, data, opts = {}) {
 	if (!this.enabled) return null;
-	const w = this._bucket(bucketName);
+	const w = this.bucket(bucketName);
 	if (!w) return null;
 	return w.log(data, opts);
     }
+
     /**
-     * Forward an `info` record to an existing bucket.
+     * Forward an `info` record to a bucket (soft runtime operation).
+     *
+     * Behavior:
+     * - If Manager is disabled => returns null
+     * - If bucket name is invalid or bucket does not exist => returns null
+     * - Otherwise forwards to `Worker.info(data, opts)` and returns the stored record
      *
      * Bucket name rules:
      * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
-     * - All other values throw.
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
+     * - All other values are treated as invalid (soft failure).
      *
-     * @param {string|number} bucketName Existing bucket name.
+     * @param {string|number} bucketName Bucket name.
      * @param {any} data Payload to log.
      * @param {Object} [opts] Forwarded to Worker.
-     * @returns {Object|null} The stored record, or null if dropped/missing bucket.
-     * @throws {Error} If `bucketName` is invalid.
+     * @returns {Object|null}
+     *        The stored record, or null if dropped or bucket is missing/invalid.
      */
     info(bucketName, data, opts = {}) {
 	if (!this.enabled) return null;
-	const w = this._bucket(bucketName);
+	const w = this.bucket(bucketName);
 	if (!w) return null;
 	return w.info(data, opts);
     }
     /**
-     * Forward a `warn` record to an existing bucket.
-     *
-     * Bucket name rules:
-     * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
-     * - All other values throw.
-     *
-     * @param {string|number} bucketName Existing bucket name.
-     * @param {any} data Payload to log.
-     * @param {Object} [opts] Forwarded to Worker.
-     * @returns {Object|null} The stored record, or null if dropped/missing bucket.
-     * @throws {Error} If `bucketName` is invalid.
-     */
-    warn(bucketName, data, opts = {}) {
-	if (!this.enabled) return null;
-	const w = this._bucket(bucketName);
-	if (!w) return null;
-	return w.warn(data, opts);
-    }
-    /**
-     * Forward an `error` record to an existing bucket.
+     * Forward a `warn` record to a bucket (soft runtime operation).
      *
      * Behavior:
      * - If Manager is disabled => returns null
-     * - If bucket does not exist => returns null
-     * - Otherwise forwards to `Worker.error(data, opts)` and returns the stored record
-     * - If `this.throwOnError` is true, throws after recording (and prints via `console.error`).
+     * - If bucket name is invalid or bucket does not exist => returns null
+     * - Otherwise forwards to `Worker.warn(data, opts)` and returns the stored record
      *
      * Bucket name rules:
      * - Valid names are non-empty strings.
-     * - Finite numbers are accepted and coerced to strings (e.g. `0` -> `"0"`).
-     * - All other values throw.
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
+     * - All other values are treated as invalid (soft failure).
      *
-     * @param {string|number} bucketName Existing bucket name.
+     * @param {string|number} bucketName Bucket name.
      * @param {any} data Payload to log.
      * @param {Object} [opts] Forwarded to Worker.
-     * @returns {Object|null} The stored record, or null if dropped/missing bucket.
-     * @throws {Error} If `bucketName` is invalid.
-     * @throws {Error} If `throwOnError` is enabled.
+     * @returns {Object|null}
+     *        The stored record, or null if dropped or bucket is missing/invalid.
      */
+    warn(bucketName, data, opts = {}) {
+	if (!this.enabled) return null;
+	const w = this.bucket(bucketName);
+	if (!w) return null;
+	return w.warn(data, opts);
+    }
+
+    /**
+     * Forward an `error` record to a bucket.
+     *
+     * Behavior:
+     * - If Manager is disabled => returns null.
+     * - If bucket name is invalid or bucket does not exist:
+     *     - returns null
+     *     - unless `throwOnError` is enabled, in which case:
+     *         - prints the payload via `console.error`
+     *         - throws
+     * - If bucket exists:
+     *     - forwards to `Worker.error(data, opts)`
+     *     - returns the stored record
+     *     - if `throwOnError` is enabled:
+     *         - forwards to Worker with printing suppressed
+     *         - prints once via `console.error`
+     *         - throws after recording
+     *
+     * Notes:
+     * - When throwing, the `opts` object forwarded to the Worker is modified
+     *   to suppress Worker-side printing.
+     *
+     * Bucket name rules:
+     * - Valid names are non-empty strings.
+     * - Finite numbers are accepted and coerced to strings (e.g. `0` → `"0"`).
+     * - All other values are treated as invalid (soft failure).
+     *
+     * @param {string|number} bucketName Bucket name.
+     * @param {any} data Payload to log.
+     * @param {Object} [opts] Forwarded to Worker.
+     * @returns {Object|null}
+     *        The stored record, or null if dropped or bucket is missing/invalid.
+     * @throws {Error}
+     *        If `throwOnError` is enabled (regardless of bucket existence).
+     */    
     error(bucketName, data, opts = {}) {
 	if (!this.enabled) return null;
-	const w = this._bucket(bucketName);
-	if (!w) return null;
 
-	const rec = w.error(data, opts);
+	const w = this.bucket(bucketName);
 
-	if (this.throwOnError) {
-	    console.error(rec);
-            throw new Error(`[log] error(${bucketName}) (throwOnError enabled)`);
+	// Missing / invalid bucket
+	if (!w) {
+            if (!this.throwOnError) return null;
+
+            console.error(data);
+
+            const err = new Error(
+		`[log] error(${bucketName}) invalid or missing bucket (throwOnError enabled)`
+            );
+            err.bucket = bucketName;
+            err.data = data;
+            throw err;
 	}
-	return rec;
+
+	// Emit, but suppress worker printing if we are going to throw
+	const rec = w.error(
+            data,
+            this.throwOnError
+		? Object.assign({}, opts, { print: false })
+		: opts
+	);
+
+	if (!this.throwOnError) return rec;
+
+	console.error(rec);
+
+	const err = new Error(
+            `[log] error(${bucketName}) (throwOnError enabled)`
+	);
+	err.bucket = bucketName;
+	err.record = rec;
+	throw err;
     }
-    
     // ---------------------------------------------------------------------------
     // Reading / clearing
     // ---------------------------------------------------------------------------

@@ -241,7 +241,10 @@ export default class Worker {
      * @returns {Object[]} Array of matching records.
      * @throws {Error} If `limit` is present but invalid (non-integer or negative).
      */
-    get(filter = {}) {
+    get(in_filter = {}) {
+	//force a hash
+	const filter = (in_filter && typeof in_filter === "object") ? in_filter : {};
+
 	// limit: if provided, must be a non-negative integer
 	let limit = null;
 	if (filter && "limit" in filter) {
@@ -347,14 +350,21 @@ export default class Worker {
      * - ring cursor
      * - accepted record count
      *
+     * Does NOT reset `_lastAt`.
+     * `_lastAt` is intentionally preserved for async / upload workflows where
+     * consumers may need to know the last time this interface was used,
+     * regardless of resets.
+     *
      * @returns {void}
      */
     clear() {
-        this._events.length = 0;
-        this._cursor = 0;
-        this._count = 0;
-    }
+	this._events.length = 0;
+	this._cursor = 0;
+	this._count = 0;
 
+	// Intentionally NOT reset — see JSDoc for rationale (async / upload flow control)
+	// this._lastAt = 0;
+    }
     
     /**
      * Return a snapshot of bucket state.
@@ -551,7 +561,7 @@ export default class Worker {
             level,
             event: opts.event,
             trace: opts.trace,
-	    lastAt: this.lastAt,
+	    lastAt: this._lastAt,
 	    // avoid mutation as best as possible
 	    clone:
             opts && "clone" in opts
