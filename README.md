@@ -1,4 +1,4 @@
-# m7-js-lib-primitive-log 
+# m7-js-lib-primitive-log
 
 A synchronous event/log capture primitive designed for live inspection, high-throughput instrumentation, and composable observability pipelines.
 
