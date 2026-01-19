@@ -53,6 +53,8 @@ It may be:
 * an object
 * an Error
 * any value
+* If you pass a plain object, it becomes body.
+* Otherwise body becomes { value: <your input> }.
 
 ### Reference semantics (default)
 

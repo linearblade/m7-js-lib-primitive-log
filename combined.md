@@ -1203,6 +1203,8 @@ It may be:
 * an object
 * an Error
 * any value
+* If you pass a plain object, it becomes body.
+* Otherwise body becomes { value: <your input> }.
 
 ### Reference semantics (default)
 
@@ -1352,6 +1354,8 @@ Workers store records in a strict `{ header, body }` shape.
 
 * `header` is system-owned metadata
 * `body` is user-owned payload
+* If you pass a plain object, it becomes body.
+* Otherwise body becomes { value: <your input> }.
 
 `header` fields created by the Worker include:
 
@@ -2017,13 +2021,10 @@ Because capture is synchronous and includes timing metadata, you can detect burs
 
 ```js
 log.createBucket('perf', {
-  onEvent(record) {
+  onEvent(record, worker, workspace) {
     const d = record?.header?.delta;
     if (typeof d === 'number' && d >= 0 && d < 5) {
-      // <5ms between events: treat as a burst
-      // (Keep this lightweight; it runs synchronously.)
-      // Example: count bursts
-      this._bursts = (this._bursts || 0) + 1;
+      workspace.bursts = (workspace.bursts || 0) + 1;
     }
   }
 });
@@ -2517,7 +2518,7 @@ Each bucket stores records in memory.
 ```js
 const worker = log.bucket('errors');
 
-console.log(worker.records);
+console.log(worker._events);
 ```
 
 Records have a strict structure:
@@ -2596,7 +2597,7 @@ If you want one bucket, create one.
 
 ```js
 // Disable a bucket
-worker.disable();
+worker.setEnabled(false);
 
 // Clear stored records
 worker.clear();

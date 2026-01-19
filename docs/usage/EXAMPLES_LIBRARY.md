@@ -92,13 +92,10 @@ Because capture is synchronous and includes timing metadata, you can detect burs
 
 ```js
 log.createBucket('perf', {
-  onEvent(record) {
+  onEvent(record, worker, workspace) {
     const d = record?.header?.delta;
     if (typeof d === 'number' && d >= 0 && d < 5) {
-      // <5ms between events: treat as a burst
-      // (Keep this lightweight; it runs synchronously.)
-      // Example: count bursts
-      this._bursts = (this._bursts || 0) + 1;
+      workspace.bursts = (workspace.bursts || 0) + 1;
     }
   }
 });

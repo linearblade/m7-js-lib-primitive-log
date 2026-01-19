@@ -61,6 +61,8 @@ Workers store records in a strict `{ header, body }` shape.
 
 * `header` is system-owned metadata
 * `body` is user-owned payload
+* If you pass a plain object, it becomes body.
+* Otherwise body becomes { value: <your input> }.
 
 `header` fields created by the Worker include:
 

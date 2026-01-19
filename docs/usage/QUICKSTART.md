@@ -79,7 +79,7 @@ Each bucket stores records in memory.
 ```js
 const worker = log.bucket('errors');
 
-console.log(worker.records);
+console.log(worker._events);
 ```
 
 Records have a strict structure:
@@ -158,7 +158,7 @@ If you want one bucket, create one.
 
 ```js
 // Disable a bucket
-worker.disable();
+worker.setEnabled(false);
 
 // Clear stored records
 worker.clear();
