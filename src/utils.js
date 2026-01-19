@@ -3,9 +3,10 @@ import { CONSOLE_LEVEL } from './constants.js';
  * Validate and normalize a bucket name.
  *
  * Behavior (strict):
- * - Accepts non-empty strings.
+ * - Accepts non-empty strings **after trimming**.
  * - Accepts finite numbers and coerces them to strings.
- * - Rejects `null`, `undefined`, empty string, NaN, Infinity,
+ * - Rejects strings that are empty or whitespace-only.
+ * - Rejects `null`, `undefined`, NaN, Infinity,
  *   and all other non-string / non-number values.
  *
  * Error handling:
@@ -24,8 +25,9 @@ export function validateBucketName(value, die = true) {
     };
 
     if (typeof value === "string") {
-        if (value.length === 0) return fail();
-        return value;
+        const trimmed = value.trim();
+        if (trimmed.length === 0) return fail();
+        return trimmed;
     }
 
     if (typeof value === "number") {
@@ -36,18 +38,26 @@ export function validateBucketName(value, die = true) {
     return fail();
 }
 
+
 /**
  * Normalize console emission policy into a numeric CONSOLE_LEVEL.
  *
- * - falsy => OFF
- * - true  => ALL
- * - number => returned as-is
- * - string => looked up in CONSOLE_LEVEL (case-insensitive)
+ * Behavior:
+ * - falsy          => CONSOLE_LEVEL.OFF
+ * - true           => CONSOLE_LEVEL.ALL
+ * - finite number  => clamped to the enum range [CONSOLE_LEVEL.OFF .. CONSOLE_LEVEL.ALL]
+ * - string         => looked up in CONSOLE_LEVEL by key (case-insensitive)
+ * - anything else  => CONSOLE_LEVEL.OFF
+ *
+ * Notes:
+ * - Numeric clamping prevents out-of-range values from producing surprising behavior.
+ * - String matching expects enum keys (e.g. "OFF", "ERROR", "WARN", "INFO", "LOG", "ALL").
  *
  * @private
  * @param {any} value
- * @returns {number} console level enum value
+ * @returns {number} A CONSOLE_LEVEL enum value.
  */
+
 export function _normalizeConsoleLevel(value) {
     // falsy => OFF
     if (!value) return CONSOLE_LEVEL.OFF;

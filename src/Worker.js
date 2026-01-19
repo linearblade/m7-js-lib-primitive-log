@@ -524,30 +524,45 @@ export default class Worker {
     // ---------------------------------------------------------------------------
     // Logging API (Worker-first)
     // ---------------------------------------------------------------------------
-/**
- * Emit a log entry into this Worker.
- *
- * Steps:
- * - If disabled => returns null
- * - Normalize payload into a `{ header, body }` record via `utils.makeRecord`
- * - Include timing metadata:
- *   - `header.lastAt` and `header.delta` are populated when a previous timestamp exists
- * - Optionally clone the record body best-effort (to reduce mutation-by-reference)
- * - Store the record via `_push(record)`
- * - If console policy allows, print the record best-effort
- *
- * @param {any} data User payload (object becomes body; primitives become `{ value }`).
- * @param {Object} [opts]
- * @param {string} [opts.level='log'] Severity level stored in `record.header.level`.
- * @param {string} [opts.event] Optional event name stored in `record.header.event`.
- * @param {any}    [opts.trace] Optional trace payload stored in `record.header.trace`.
- * @param {Object} [opts.ctx] Optional context forwarded to printing.
- * @param {boolean} [opts.clone]
- *        When provided, overrides bucket default cloning behavior.
- *        If true, clones the record `body` best-effort before storage to reduce
- *        mutation-by-reference.
- * @returns {Object|null} The stored record, or null if dropped.
- */
+    /**
+     * Emit a log entry into this Worker.
+     *
+     * Steps:
+     * - If disabled => returns null
+     * - Normalize payload into a `{ header, body }` record via `utils.makeRecord`
+     *   - `header.level` defaults to `"log"` (or `opts.level` if provided)
+     *   - `header.source` is set to this worker's name
+     *   - `header.event` / `header.trace` are included when provided
+     *   - Timing metadata is included when possible:
+     *     - `header.lastAt` and `header.delta` are populated when a previous timestamp exists
+     * - Optionally clone the record body best-effort (to reduce mutation-by-reference)
+     *   - Per-call override: `opts.clone` (when present)
+     *   - Otherwise falls back to worker default: `this.clone`
+     * - Store the record via `_push(record)` (may drop and return null)
+     * - Optionally print best-effort when allowed:
+     *   - Suppress printing if `opts.print === false`
+     *   - Console policy is `opts.console` when provided; otherwise `this.console`
+     *   - Printing is gated by `utils.shouldPrint(record, { console: consolePolicy })`
+     *   - Uses `this.onPrint` if set, otherwise `utils.printRecord`
+     *   - Printer is called as: `printer(record, ctx, this.userWorkspace)`
+     *     where `ctx` includes `{ levelNum, policy, CONSOLE_LEVEL }`
+     *
+     * @param {any} data User payload (objects become `body`; primitives become `{ value }`).
+     * @param {Object} [opts]
+     * @param {string}  [opts.level='log'] Severity stored in `record.header.level`.
+     * @param {string}  [opts.event] Optional event name stored in `record.header.event`.
+     * @param {any}     [opts.trace] Optional trace payload stored in `record.header.trace`.
+     * @param {boolean} [opts.clone]
+     *        When present, overrides worker default cloning behavior.
+     *        If true, clones the record `body` best-effort before storage to reduce
+     *        mutation-by-reference.
+     * @param {boolean} [opts.print=true]
+     *        When set to `false`, suppresses console printing for this call only.
+     * @param {any}     [opts.console]
+     *        Per-call override for console printing policy. If omitted, uses `this.console`.
+     *        This is interpreted by `utils._normalizeConsoleLevel()` / `utils.shouldPrint()`.
+     * @returns {Object|null} The stored record, or null if dropped/disabled.
+     */
     emit(data, opts = {}) {
 	if (!this.enabled) return null;
 
