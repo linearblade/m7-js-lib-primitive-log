@@ -5,28 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>m7 Primitive Log – Debug & Test Page</title>
     <link rel="stylesheet" href="style.css">
-    <!-- m7-lib bootstrap (sets window.lib) -->
     <script src="https://js.m7.org/gs/v1/bootStrap.js"></script>
-    <!-- auto.js registers lib.primitive.log.Manager / Worker -->
     <script type="module" src="../src/auto.js"></script>
-    <!-- Your test logic -->
-    <script src="./test-log.js"></script>
+    <script src="./test1.js"></script>
   </head>
   <body>
     <h1>m7 Primitive Log Test Page</h1>
     <div id="status-line">Status: <span id="current-status">not initialized</span></div>
-    <div id="controls">
-      <button class="info" onclick="createBuckets()">Create Buckets</button>
-      <button class="primary" onclick="logMessages()">Log Messages</button>
-      <button class="warning" onclick="logHighVolume(50)">High Volume (50 logs)</button>
-      <button onclick="changeConsolePolicy('warn')">Console: Warn+</button>
-      <button onclick="changeConsolePolicy('off')">Console: Off</button>
-      <button class="secondary" onclick="showBucket('app')">Show 'app' Logs</button>
-      <button class="secondary" onclick="showBucket('errors')">Show 'errors' Logs</button>
-      <button class="info" onclick="listBuckets()">List Buckets / Stats</button>
-      <button class="danger" onclick="clearAll()">Clear All</button>
-      <button onclick="clearOutput()">Clear Output</button>
+
+    <div id="controls" style="display:flex; flex-direction:column">
+      <div style="display:flex; flex-direction:row">
+	<!-- Bucket creation & global controls -->
+	<button class="info" onclick="createTestBuckets()">Create Test Buckets</button>
+	<button class="secondary" onclick="listBuckets()">List Buckets / Stats</button>
+	<button class="danger" onclick="clearAll()">Clear All Buckets</button>
+	<button onclick="clearOutput()">Clear Output Pane</button>
+      </div>
+      <!-- Per-bucket logging buttons -->
+      <div style="margin: 20px 0 10px; font-weight: bold; color: #88f;">Log to specific buckets:</div>
+      <div style="display:flex; flex-direction:row">
+
+	<button class="info" onclick="logToBucket('app', 'log', 'Normal app event')">app . log()</button>
+	<button class="info" onclick="logToBucket('app', 'info', 'User action info')">app . info()</button>
+	<button class="warning" onclick="logToBucket('app', 'warn', 'High latency warning')">app . warn()</button>
+	<button class="danger" onclick="logToBucket('app', 'error', new Error('App crash simulation'))">app . error()</button>
+
+	<button class="danger" onclick="logToBucket('errors', 'error', 'Critical backend failure')">errors . error()</button>
+	<button class="warning" onclick="logToBucket('errors', 'warn', 'Slow query')">errors . warn()</button>
+
+	<button class="debug" onclick="logToBucket('debug', 'log', { debugData: { ts: Date.now(), rand: Math.random() } })">debug . log() (complex obj)</button>
+      </div>
+      <!-- Volume & policy controls -->
+      <div style="margin: 20px 0 10px; font-weight: bold; color: #88f;">Volume & Console Policy:</div>
+      <div style="display:flex; flex-direction:row">
+	<button class="warning" onclick="logHighVolume('app', 80)">High Volume → app (80 logs)</button>
+	<button onclick="setGlobalConsolePolicy('all')">Console: ALL</button>
+	<button onclick="setGlobalConsolePolicy('warn')">Console: WARN+</button>
+	<button onclick="setGlobalConsolePolicy('error')">Console: ERROR only</button>
+	<button onclick="setGlobalConsolePolicy('off')">Console: OFF</button>
+      </div>
     </div>
+
     <div id="output">Output will appear here...\n</div>
   </body>
 </html>

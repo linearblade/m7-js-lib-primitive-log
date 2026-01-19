@@ -6,19 +6,17 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("DOM ready! 🚀 m7 primitive.log test rig");
     output = document.getElementById('output');
     statusEl = document.getElementById('current-status');
-
     if (output) {
         output.textContent += "\nPage loaded at " + new Date().toLocaleTimeString() + "\n";
     }
-
-    // Auto-init manager on load
-    initManager();
+    initManager(); // auto-init
 });
 
 function initManager() {
-    if (manager) return;
-    if (!window.lib?.primitive?.log) {
-        logMessage("ERROR: window.lib.primitive.log not found – check auto.js load order", "error");
+    if (manager) return logMessage("Manager already initialized", "warn");
+
+    if (!window.lib?.primitive?.log?.Manager) {
+        logMessage("ERROR: window.lib.primitive.log.Manager not found – check auto.js & load order", "error");
         statusEl.textContent = "lib missing";
         statusEl.style.color = '#f66';
         return;
@@ -30,10 +28,10 @@ function initManager() {
         enabled: true,
         throwOnError: false,
         worker: {
-            max: 100,          // ring buffer per bucket
+            max: 100,
             enabled: true,
-            console: 'log',    // default: show log+ higher
-            clone: false       // no auto-clone by default
+            console: 'log',
+            clone: false
         }
     });
 
@@ -47,8 +45,8 @@ function updateStatus() {
         statusEl.style.color = '#888';
         return;
     }
-    const buckets = manager.list().length;
-    statusEl.textContent = `ready – ${buckets} bucket${buckets === 1 ? '' : 's'}`;
+    const count = manager.list().length;
+    statusEl.textContent = `ready – ${count} bucket${count === 1 ? '' : 's'}`;
     statusEl.style.color = '#0d8';
 }
 
@@ -73,66 +71,109 @@ function clearOutput() {
 // ────────────────────────────────────────────────
 // Core Demo Actions
 // ────────────────────────────────────────────────
-function createBuckets() {
+function createTestBuckets() {
     if (!manager) return logMessage("Manager not ready", "error");
 
-    manager.createBucket('app',    { console: 'info' });
-    manager.createBucket('errors', { console: 'error', max: 20 });
-    manager.createBucket('debug',  { console: 'off', clone: true });
+    manager.clear(); // start fresh
 
-    logMessage("Created buckets: app, errors, debug", "info");
+    manager.createBucket('app', {
+        max: 150,
+        console: 'info',
+        clone: false
+    });
+
+    manager.createBucket('errors', {
+        max: 30,
+        console: 'error',
+        clone: true
+    });
+
+    manager.createBucket('debug', {
+        max: 200,
+        console: 'off',
+        clone: true
+    });
+
+    logMessage("Created test buckets: app (console:info+), errors (console:error only), debug (console:off)", "info");
+    updateStatus();
 }
 
-function logMessages() {
+function logToBucket(bucketName, level, data) {
     if (!manager) return logMessage("Manager not ready", "error");
 
-    manager.log('app',    "App started successfully 🚀");
-    manager.info('app',   "User logged in", { userId: 42 });
-    manager.warn('app',   "High latency detected ⚠️");
-    manager.error('errors', new Error("Database timeout"), { code: 504 });
-    manager.log('debug',  { complex: { nested: true, array: [1,2,3] } });
+    const worker = manager.bucket(bucketName);
+    if (!worker) {
+        return logMessage(`Bucket '${bucketName}' does not exist – create buckets first`, "warn");
+    }
 
-    logMessage("Sample messages logged to buckets", "info");
+    let record;
+    if (level === 'log')    record = worker.log(data);
+    else if (level === 'info')  record = worker.info(data);
+    else if (level === 'warn')  record = worker.warn(data);
+    else if (level === 'error') record = worker.error(data);
+    else return logMessage(`Invalid level: ${level}`, "error");
+
+    const prefix = `[${bucketName.toUpperCase()}] `;
+    const display = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    logMessage(prefix + display, level);
+
+    if (record) {
+        logMessage(`   → stored (#${worker._count || '?'}) at ${new Date(record.header.at).toLocaleTimeString()}`, "list");
+    } else {
+        logMessage("   → dropped (bucket disabled?)", "warn");
+    }
 }
 
-function logHighVolume(count = 50) {
-    if (!manager) return logMessage("Manager not ready", "error");
+function logHighVolume(bucketName = 'app', count = 80) {
+    if (!manager?.bucket(bucketName)) return logMessage(`Bucket '${bucketName}' missing`, "error");
 
-    logMessage(`Generating ${count} log entries...`, "warn");
+    logMessage(`Generating ${count} logs to '${bucketName}'...`, "warn");
     for (let i = 1; i <= count; i++) {
-        manager.log('app', `Event #${i} – testing volume ${Math.random() > 0.8 ? '🔥' : ''}`);
+        const emoji = i % 10 === 0 ? ' 🔥' : '';
+        manager.log(bucketName, `Volume test #${i} of ${count}${emoji}`);
     }
     logMessage(`Done – ${count} logs emitted`, "info");
 }
 
-function changeConsolePolicy(level) {
-    if (!manager) return;
+function setGlobalConsolePolicy(level) {
+    if (!manager) return logMessage("Manager not ready", "error");
 
-    // For demo: apply to all buckets
-    manager.workers.forEach(worker => {
-        worker.setConsoleLevel(level);
-    });
-
-    logMessage(`Console policy set to: ${level.toUpperCase()} for all buckets`, level === 'off' ? 'warn' : 'info');
+    manager.workers.forEach(w => w.setConsoleLevel(level));
+    logMessage(`Global console policy → ${level.toUpperCase()} (all buckets)`, level === 'off' ? 'warn' : 'info');
 }
 
 function showBucket(bucketName) {
     if (!manager) return logMessage("Manager not ready", "error");
 
+    const worker = manager.bucket(bucketName);
+    if (!worker) return logMessage(`Bucket '${bucketName}' not found`, "warn");
+
     const records = manager.get(bucketName, { limit: 20 });
+    const stats = worker.stats(); // get fresh stats
+
     if (records.length === 0) {
         logMessage(`Bucket '${bucketName}' is empty`, "warn");
         return;
     }
 
-    logMessage(`Showing last ${records.length} records from '${bucketName}':`, "list");
+    const overwritten = stats.count > stats.size ? (stats.count - stats.size) : 0;
+    const ringNote = stats.ring ? ` (ring buffer – ${overwritten} overwritten)` : '';
+
+    logMessage(
+        `Showing last ${records.length} from '${bucketName}' – current size: ${stats.size}${ringNote}`,
+        "list"
+    );
+
     records.forEach((rec, i) => {
         const { header, body } = rec;
-        const line = `[${new Date(header.at).toLocaleTimeString()}] ${header.level.toUpperCase()} → ${JSON.stringify(body)}`;
-        logMessage(line, header.level);
+        const time = new Date(header.at).toLocaleTimeString();
+        const level = header.level.toUpperCase().padEnd(5);
+        const payload = typeof body === 'object' && body !== null 
+            ? JSON.stringify(body, null, 2).replace(/\n/g, ' ') 
+            : String(body);
+        logMessage(`  #${String(i+1).padStart(2)}  ${time}  ${level} → ${payload}`, header.level);
     });
 }
-
 function listBuckets() {
     if (!manager) return logMessage("Manager not ready", "error");
 
@@ -144,15 +185,21 @@ function listBuckets() {
 
     logMessage(`Buckets (${stats.length}):`, "list");
     stats.forEach(s => {
+        const storedNow = s.size ?? '—';           // current records in memory
+        const totalEmitted = s.count ?? '—';       // lifetime emits (useful for ring)
+        const mx = s.max === 0 ? '∞' : (s.max ?? '—');
+        const con = s.console ?? '—';
+        const ringMode = s.ring ? ' (ring)' : '';
+
         logMessage(
-            ` • ${s.name.padEnd(12)} | enabled: ${s.enabled} | stored: ${s.stored} | max: ${s.max || '∞'} | console: ${s.console}`,
+            ` • ${s.name.padEnd(12)} | enabled: ${s.enabled ?? '?'} | size: ${storedNow} | total: ${totalEmitted} | max: ${mx}${ringMode} | console: ${con}`,
             "list"
         );
     });
 }
-
 function clearAll() {
     if (!manager) return;
-    manager.clear(); // clears all buckets
+    manager.clear();
     logMessage("All buckets cleared", "danger");
+    updateStatus();
 }
