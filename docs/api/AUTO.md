@@ -1,15 +1,19 @@
 # auto.js Integration Reference
 
-`auto.js` is an **optional** convenience layer that registers IntervalManager into the `m7-lib` global (`window.lib`) so you can create managers via a short, ergonomic shortcut:
+`auto.js` is an **optional** convenience layer that registers the log primitive into the **m7-lib** global (`window.lib`).
+
+After loading `auto.js`, you can construct a Manager via a short, ergonomic path:
 
 ```js
-const manager = new lib.interval.manager();
+const log = new lib.primitive.log.Manager();
 ```
 
-If you do **not** include `auto.js`, you can still use the library normally via imports / script tags:
+If you do **not** include `auto.js`, you can still use the library normally via module imports:
 
 ```js
-const manager = new IntervalManager();
+import { Manager } from './log/index.js';
+
+const log = new Manager();
 ```
 
 ---
@@ -18,23 +22,30 @@ const manager = new IntervalManager();
 
 When loaded, `auto.js`:
 
-1. Ensures the `lib.interval` namespace exists on `window.lib`
-2. Registers a factory function (constructor wrapper) at:
+1. Ensures the `lib.primitive.log` namespace exists on `window.lib`
+2. Exposes public constructors under that namespace
 
-   * `lib.interval.manager`
-3. Optionally exposes the `ManagedInterval` and/or `IntervalManager` constructors under `lib.interval` (depending on how you choose to export)
+Typically:
+
+* `lib.primitive.log.Manager`
+* `lib.primitive.log.Worker`
 
 The intent is:
 
-* **Zero-config convenience** for browser script-tag usage
-* **Consistent discovery surface** under `lib.interval.*`
+* **Zero-config convenience** for browser usage
+* A consistent discovery surface under `lib.primitive.log.*`
+
+`auto.js` does **not** change runtime behavior of capture.
+
+It is registration only.
 
 ---
 
 ## Requirements
 
-* `m7-lib` **v0.98+** must be loaded first
-* `auto.js` must be loaded **after** `m7-lib` and after the IntervalManager source files
+* `m7-lib` must be loaded first
+* `auto.js` must be loaded **after** `m7-lib`
+* `auto.js` should be loaded as a **module**
 
 Recommended script order:
 
@@ -43,7 +54,7 @@ Recommended script order:
 <script src="/lib/m7-lib.min.js"></script>
 
 <!-- Then load auto.js as a module -->
-<script type="module" src="/lib/interval/auto.js"></script>
+<script type="module" src="/lib/log/auto.js"></script>
 ```
 
 ---
@@ -53,48 +64,48 @@ Recommended script order:
 ### Basic
 
 ```js
-const manager = new lib.interval.manager({
-  pauseWhenHidden: true,
-  pauseWhenOffline: true,
-  autoRemove: true
-});
+const log = new lib.primitive.log.Manager();
+
+log.createBucket('app');
+log.log('app', 'started');
 ```
 
-From here, usage is identical to the standard API:
+### Direct Worker usage
+
+If you only need one bucket, you can create a Worker directly:
 
 ```js
-manager.register({
-  name: 'clock',
-  everyMs: 1000,
-  fn: (ctx) => console.log('tick', ctx.runs)
+const worker = new lib.primitive.log.Worker({
+  console: 'warn'
 });
 
-manager.start('clock');
+worker.warn('something happened');
 ```
 
 ---
 
 ## Troubleshooting
 
-| Symptom                                  | Likely Cause                            | Fix                                       |
-| ---------------------------------------- | --------------------------------------- | ----------------------------------------- |
-| `lib is undefined`                       | `m7-lib` not loaded, or loaded too late | Load `m7-lib` first                       |
-| `lib.hash.set is not a function`         | Wrong `m7-lib` version                  | Use `m7-lib` ≥ 0.98                       |
-| `lib.interval` missing                   | `auto.js` not included                  | Add `auto.js` after IntervalManager files |
-| `lib.interval.manager is not a function` | Script order issue                      | Ensure `auto.js` loads last               |
+| Symptom                                   | Likely Cause                              | Fix                                              |
+| ----------------------------------------- | ----------------------------------------- | ------------------------------------------------ |
+| `lib is undefined`                        | `m7-lib` not loaded (or loaded too late)  | Load `m7-lib` first                              |
+| `lib.primitive` is undefined              | `auto.js` not loaded, or load order wrong | Ensure `auto.js` loads after `m7-lib`            |
+| `Manager is not a constructor`            | Wrong path / export name                  | Verify you are using `lib.primitive.log.Manager` |
+| Nothing appears under `lib.primitive.log` | `auto.js` not executed as module          | Use `<script type="module">`                     |
 
 ---
 
 ## Notes
 
-* `auto.js` is intentionally small and should remain dependency-light.
+* `auto.js` should remain dependency-light.
 * In module/bundler environments, you typically do **not** need `auto.js`.
+* `auto.js` does not introduce any async behavior.
 
 ---
 
 ## Related Docs
 
-* **Installation** → [`INSTALLATION.md`](../usage/INSTALLATION.md)
-* **Quick Start** → [`QUICKSTART.md`](../usage/QUICKSTART.md)
-* **IntervalManager API** → [`INTERVAL_MANAGER.md`](./INTERVAL_MANAGER.md)
-* **ManagedInterval API** → [`MANAGED_INTERVAL.md`](./MANAGED_INTERVAL.md)
+* **Installation** → [../usage/INSTALLATION.md](../usage/INSTALLATION.md)
+* **Quick Start** → [../usage/QUICK_START.md](../usage/QUICK_START.md)
+* **Manager API** → [MANAGER.md](./MANAGER.md)
+* **Worker API** → [WORKER.md](./WORKER.md)

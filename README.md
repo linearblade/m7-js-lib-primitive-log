@@ -258,7 +258,7 @@ import { Manager, Worker } from "./log/index.js";
 
 Start here if you want to understand behavior and contracts, not just signatures.
 
-* [Usage Overview](docs/usage/OVERVIEW.md)
+* [Quick Start](docs/usage/QUICK_START.md)
 * [Performance Notes](docs/usage/PERFORMANCE.md)
 * [Examples](docs/usage/EXAMPLES.md)
 * [Installation](docs/usage/INSTALLATION.md)

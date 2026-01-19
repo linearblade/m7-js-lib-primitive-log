@@ -1,139 +1,179 @@
-# Quick Start – IntervalManager
+# Quick Start – m7-js-lib-primitive-log
 
-This guide gets you running your first managed interval in under 2 minutes.
+This guide gets you capturing structured log events synchronously in under 2 minutes.
+
+No transports. No async scheduling. No hidden policy.
+
+---
 
 ## 1. Project Setup (one-time)
 
-Make sure m7-lib ≥ v0.98 is loaded **before** IntervalManager files.
+If you are using **m7-lib**, make sure it is loaded **before** the log primitive.
 
 ```html
-<!-- Load m7-lib first (required) -->
-<script src="/path/to/m7-lib-v0.98.min.js"></script>
+<!-- Load m7-lib first (required only for auto.js) -->
+<script src="/path/to/m7-lib.min.js"></script>
 
-<!-- Then load IntervalManager files -->
-<script src="/path/to/interval/ManagedInterval.js"></script>
-<script src="/path/to/interval/IntervalManager.js"></script>
-
-<!-- Recommended: include auto.js for the nice shortcut -->
-<script src="/path/to/interval/auto.js"></script>
+<!-- Then load the log primitive -->
+<script type="module" src="/path/to/log/auto.js"></script>
 ```
 
-After including `auto.js`, you can use the convenient shortcut:
+After including `auto.js`, the primitive is available at:
 
 ```js
-const manager = new lib.interval.manager();
+lib.primitive.log
 ```
 
-Alternatively, use standard imports (module environments):
+Alternatively, in module environments you can import directly:
 
 ```js
-import { IntervalManager } from './lib/interval/IntervalManager.js';
-const manager = new IntervalManager();
+import { Manager, Worker } from './log/index.js';
 ```
 
-## 2. Create & Start a Simple Interval
+---
 
-```javascript
-// Option A: Using the lib.interval shortcut (requires auto.js)
-const manager = new lib.interval.manager({
-  pauseWhenHidden: true,
-  pauseWhenOffline: true
+## 2. Create a Manager and a Log Bucket
+
+The **Manager** is a convenience layer for working with multiple named log streams (Workers).
+
+```js
+// Using auto.js
+const log = new lib.primitive.log.Manager();
+
+// Create a named bucket (Worker)
+log.createBucket('errors');
+```
+
+At this point:
+
+* Nothing is asynchronous
+* No data leaves memory
+* No cloning occurs
+* No console output is enabled
+
+---
+
+## 3. Emit Your First Log Record
+
+```js
+log.log('errors', new Error('boom'), {
+  level: 'error'
+});
+```
+
+This synchronously:
+
+* Creates a record
+* Attaches timing metadata
+* Stores it in the `errors` bucket
+* Returns immediately
+
+No configuration required.
+
+---
+
+## 4. Inspect Records
+
+Each bucket stores records in memory.
+
+```js
+const worker = log.getBucket('errors');
+
+console.log(worker.records);
+```
+
+Records have a strict structure:
+
+* `record.header` — timing and metadata
+* `record.body` — your payload
+
+Payloads are stored **by reference** unless cloning is explicitly enabled.
+
+---
+
+## 5. Enable Console Output (Optional)
+
+Console printing is disabled by default for performance reasons.
+
+```js
+log.createBucket('debug', {
+  console: 'log'
 });
 
-// Option B: Standard way (works with or without auto.js)
-const manager = new IntervalManager({
-  pauseWhenHidden: true,
-  pauseWhenOffline: true
-});
+log.log('debug', 'hello world');
+```
 
-// Register a simple interval
-manager.register({
-  name: 'clock',
-  everyMs: 1000,                  // every second
-  runWhenHidden: false,           // pause when tab is not visible
-  fn: (ctx) => {
-    console.log(`Tick #${ctx.runs}  —  ${new Date().toLocaleTimeString()}`);
-    
-    // Optional: auto-stop after 8 ticks
-    if (ctx.runs >= 8) {
-      ctx.cancel('demo finished');
-    }
+Console emission:
+
+* Is synchronous
+* Is best-effort
+* Should be used selectively
+
+---
+
+## 6. Hooks: React Without Policy
+
+You can attach synchronous hooks to observe events.
+
+```js
+log.createBucket('metrics', {
+  onEvent(record) {
+    // Increment counters, enqueue work, signal pipelines
+    stats.increment(record.header.level);
   }
 });
-
-// Start it
-manager.start('clock');
 ```
 
-Expected console output:
-```
-Tick #1  —  14:35:22
-Tick #2  —  14:35:23
-...
-Tick #8  —  14:35:29
-```
+Hook behavior:
 
-## 3. Quick Control Examples
+* Called synchronously
+* Errors are swallowed
+* Return values are ignored
 
-### Pause, resume, manual run
+Hooks are **signals**, not execution engines.
+
+---
+
+## 7. Single-Bucket Usage (No Manager)
+
+If you only need one log stream, you can instantiate a Worker directly.
+
 ```js
-manager.pause('clock');         // stop ticking
-manager.resume('clock');        // or manager.start('clock')
-manager.runNow('clock');        // execute the function right now
-```
+import { Worker } from './log/index.js';
 
-### Using workspace to keep state
-```js
-manager.register({
-  name: 'counter',
-  everyMs: 2500,
-  workspace: { value: 0 },
-  fn: (ctx) => {
-    ctx.workspace.value += 1;
-    console.log(`Counter → ${ctx.workspace.value}`);
-    if (ctx.workspace.value >= 5) ctx.cancel();
-  }
+const worker = new Worker({
+  console: 'warn'
 });
 
-manager.start('counter');
+worker.log('something happened');
 ```
 
-### Handling errors with backoff
-```js
-manager.register({
-  name: 'risky-task',
-  everyMs: 3000,
-  errorPolicy: 'backoff',       // automatically increases delay after errors
-  fn: (ctx) => {
-    if (Math.random() > 0.6) {
-      throw new Error('Random failure');
-    }
-    console.log('Task succeeded');
-  }
-});
+There is intentionally **no default bucket**.
 
-manager.start('risky-task');
-```
+If you want one bucket, create one.
 
-## 4. Cleanup
+---
+
+## 8. Cleanup
 
 ```js
-// Stop one interval
-manager.cancel('clock');
+// Disable a bucket
+worker.disable();
 
-// Stop everything
-manager.stopAll();
-
-// Destroy the manager completely (cancels all timers)
-manager.dispose();
+// Clear stored records
+worker.clear();
 ```
+
+There are no background tasks to stop and no async resources to dispose.
+
+---
 
 ## Next Steps
 
-- Want more realistic examples? → [EXAMPLES_LIBRARY.md](./EXAMPLES_LIBRARY.md)  
-  (periodic API polling, user-activity heartbeats, rate-limited jobs, etc.)
-- Detailed installation notes & troubleshooting → [INSTALLATION.md](./INSTALLATION.md)
-- Full method reference & configuration options → [TOC.md](./TOC.md)
+* Deeper usage patterns → [EXAMPLES.md](./EXAMPLES.md)
+* Performance characteristics → [PERFORMANCE.md](./PERFORMANCE.md)
+* Full API reference → [../api/INDEX.md](../api/INDEX.md)
 
-Happy interval managing!
+---
 
+> Capture first. Decide later.

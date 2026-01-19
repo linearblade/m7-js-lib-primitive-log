@@ -1,6 +1,8 @@
-# Installation – IntervalManager
+# Installation – m7-js-lib-primitive-log
 
-IntervalManager is currently distributed as plain JavaScript files (not yet published to npm or any package registry).
+`m7-js-lib-primitive-log` is currently distributed as plain JavaScript files.
+
+It is intentionally small, dependency-light, and does not require a build step.
 
 There are **two supported installation modes**:
 
@@ -11,30 +13,33 @@ There are **two supported installation modes**:
 
 ## Prerequisites
 
-* **m7-lib** version **0.98 or higher**
-  Required *only* when using `auto.js`. IntervalManager uses `lib.hash.set` to register itself into `window.lib`.
+* **m7-lib** (latest recommended)
+  Required *only* when using `auto.js`. The log primitive registers itself into `window.lib`.
 
-* Modern browser environment (Chrome 90+, Firefox 85+, Safari 14.1+, Edge 90+ recommended)
+* Modern browser or JS runtime
+
+  * Browsers: Chrome 90+, Firefox 85+, Safari 14.1+, Edge 90+
+  * Node / Deno / Bun supported via module usage
 
 ---
 
 ## Option A – Recommended (auto.js)
 
-This is the simplest and preferred setup if you are already using **m7-lib**.
+This is the simplest setup if you are already using **m7-lib**.
 
 ### 1. Project structure (example)
 
 ```
 your-project/
 ├── lib/
-│   ├── m7-lib.min.js               ← m7-lib v0.98+
-│   └── interval/
-│       └── auto.js                 ← installs IntervalManager automatically
+│   ├── m7-lib.min.js            ← m7-lib
+│   └── log/
+│       └── auto.js              ← installs the log primitive
 ├── index.html
 └── main.js
 ```
 
-> You do **not** need to copy or load `IntervalManager.js` or `ManagedInterval.js` manually when using `auto.js`.
+> You do **not** need to manually load `Manager.js`, `Worker.js`, or other internal files when using `auto.js`.
 
 ---
 
@@ -49,11 +54,11 @@ your-project/
 </head>
 <body>
 
-  <!-- Load m7-lib (classic or module build) -->
+  <!-- Load m7-lib first -->
   <script src="/lib/m7-lib.min.js"></script>
 
-  <!-- Install IntervalManager into window.lib -->
-  <script type="module" src="/lib/interval/auto.js"></script>
+  <!-- Install log primitive into window.lib -->
+  <script type="module" src="/lib/log/auto.js"></script>
 
   <!-- Your application code -->
   <script src="/main.js"></script>
@@ -64,57 +69,74 @@ your-project/
 This installs the following API:
 
 ```js
-lib.interval.manager   // IntervalManager factory
+lib.primitive.log
 ```
 
-Usage in `main.js`:
+Example usage in `main.js`:
 
 ```js
-const manager = new lib.interval.manager({
-  pauseWhenHidden: true,
-  pauseWhenOffline: true
-});
+const log = new lib.primitive.log.Manager();
+
+log.createBucket('app');
+log.log('app', 'application started');
 ```
 
 ---
 
 ## Option B – Manual / Module Usage (no auto.js)
 
-Use this approach for bundlers, tests, or environments without `m7-lib`.
+Use this approach for bundlers, tests, Node.js, or environments without `m7-lib`.
 
 ### 1. Copy files
 
 ```
-lib/interval/
-├── IntervalManager.js
-├── ManagedInterval.js
+lib/log/
+├── Manager.js
+├── Worker.js
+├── constants.js
+├── utils.js
 └── (optional index.js)
 ```
+
+You may also vendor only the files you actually need.
+
+---
 
 ### 2. Import directly
 
 ```js
-import { IntervalManager } from './lib/interval/IntervalManager.js';
+import { Manager, Worker } from './lib/log/index.js';
 
-const manager = new IntervalManager({
-  pauseWhenHidden: true,
-  autoRemove: true
-});
+const log = new Manager();
+
+log.createBucket('errors');
+log.log('errors', new Error('boom'));
 ```
 
 > `m7-lib` is **not required** in this mode.
 
 ---
 
+## Tree-shaking & bundlers
+
+The manual/module form is friendly to bundlers:
+
+* No side effects
+* No global registration
+* No hidden async work
+
+Only the code you import is included.
+
+---
+
 ## Troubleshooting
 
-| Symptom                                  | Likely Cause                                   | Fix                                |
-| ---------------------------------------- | ---------------------------------------------- | ---------------------------------- |
-| `lib.hash.set is not a function`         | Wrong `m7-lib` version                         | Use `m7-lib` ≥ 0.98                |
-| `lib.interval` is undefined              | `auto.js` not loaded or loaded before `m7-lib` | Ensure `m7-lib` loads first        |
-| `lib.interval.manager is not a function` | `auto.js` not executed as module               | Use `<script type="module">`       |
-| Intervals don’t pause when hidden        | Manager or interval override                   | Ensure `pauseWhenHidden !== false` |
-| Unexpected interval execution            | `runWhenHidden` / `runWhenOffline` overrides   | Check per-interval config          |
+| Symptom                        | Likely Cause                             | Fix                          |
+| ------------------------------ | ---------------------------------------- | ---------------------------- |
+| `lib.primitive` is undefined   | `auto.js` not loaded or loaded too early | Ensure `m7-lib` loads first  |
+| `Manager is not a constructor` | Import path incorrect                    | Verify file paths / index.js |
+| No console output              | Console printing disabled by default     | Enable `console` per Worker  |
+| Missing records                | Worker disabled or ring buffer overflow  | Check Worker config          |
 
 ---
 
@@ -125,32 +147,32 @@ No official `.d.ts` files are provided yet.
 Minimal workaround:
 
 ```ts
-declare module './lib/interval/IntervalManager.js' {
-  export class IntervalManager {}
-  export class ManagedInterval {}
+declare module './lib/log/index.js' {
+  export class Manager {}
+  export class Worker {}
 }
 ```
 
-Alternatively, rely on JSDoc + editor inference.
+Most editors will still provide good inference via JSDoc.
 
 ---
 
 ## Future npm support
 
-When published (e.g. `@m7/interval`):
+If this package is published in the future (name TBD):
 
 ```bash
-npm install @m7/interval
+npm install m7-js-lib-primitive-log
 ```
 
 ```js
-import { IntervalManager } from '@m7/interval';
+import { Manager } from 'm7-js-lib-primitive-log';
 ```
 
 ---
 
 ## Related Docs
 
-- **Quick Start** → [`QUICKSTART.md`](./QUICKSTART.md)
-- **Examples** → [`EXAMPLES_LIBRARY.md`](./EXAMPLES_LIBRARY.md)
-- **API Docs** → [`INDEX.md`](../api/INDEX.md)
+* **Quick Start** → [`QUICK_START.md`](./QUICK_START.md)
+* **Examples** → [`EXAMPLES.md`](./EXAMPLES.md)
+* **API Docs** → [`../api/INDEX.md`](../api/INDEX.md)
