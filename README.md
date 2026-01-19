@@ -10,15 +10,31 @@ It is a primitive, not a framework.
 
 ---
 
+## Navigation
+
+If you are new to the project, the recommended reading order is:
+
+1. **Quick Start** → [docs/usage/QUICKSTART.md](docs/usage/QUICKSTART.md)
+2. **Usage TOC** → [docs/usage/TOC.md](docs/usage/TOC.md)
+3. **API Index** → [docs/api/INDEX.md](docs/api/INDEX.md)
+
+Related meta documents:
+
+- **Why not `console.log`?** → [docs/WHY_NOT_CONSOLE_LOG.md](docs/WHY_NOT_CONSOLE_LOG.md)
+- **Use Policy** → [docs/USE_POLICY.md](docs/USE_POLICY.md)
+- **AI Disclosure** → [docs/AI_DISCLOSURE.md](docs/AI_DISCLOSURE.md)
+
+---
+
 ## Why this exists
 
 If you have ever:
 
-* Needed to inspect logs live without shipping them anywhere
-* Had async logging introduce latency, ordering issues, or hidden drops
-* Been forced into deep cloning when you didn’t need it
-* Wanted deterministic timing metadata without scheduling complexity
-* Needed a hook point without committing to a transport or backend
+- Needed to inspect logs live without shipping them anywhere
+- Had async logging introduce latency, ordering issues, or hidden drops
+- Been forced into deep cloning when you didn’t need it
+- Wanted deterministic timing metadata without scheduling complexity
+- Needed a hook point without committing to a transport or backend
 
 Then you have already discovered the limits of “full-featured” logging frameworks.
 
@@ -28,13 +44,13 @@ This library solves those problems by separating capture from policy.
 
 ## What this library guarantees
 
-* Log capture is synchronous and deterministic
-* Storage is explicitly bounded (unlimited or ring buffer)
-* Records have a strict header/body split
-* Timing metadata is explicit and reliable (`at`, `lastAt`, `delta`)
-* Mutation safety is opt-in, not forced
-* Hooks (`onEvent`, `onPrint`) are best-effort and non-fatal
-* No async work is hidden or implied
+- Log capture is synchronous and deterministic
+- Storage is explicitly bounded (unlimited or ring buffer)
+- Records have a strict header/body split
+- Timing metadata is explicit and reliable (`at`, `lastAt`, `delta`)
+- Mutation safety is opt-in, not forced
+- Hooks (`onEvent`, `onPrint`) are best-effort and non-fatal
+- No async work is hidden or implied
 
 These guarantees are enforced by design, not convention.
 
@@ -76,7 +92,9 @@ A registry and convenience layer responsible for:
 * Applying shared defaults
 * Providing a single entrypoint (`log(bucket, data, opts)`)
 
-Think of it as the control plane.
+Think of it as the **control plane**.
+
+→ Detailed API: [docs/api/MANAGER.md](docs/api/MANAGER.md)
 
 ---
 
@@ -92,7 +110,9 @@ A single log stream with its own:
 * Clock source
 * Workspace
 
-Think of it as the execution plane.
+Think of it as the **execution plane**.
+
+→ Detailed API: [docs/api/WORKER.md](docs/api/WORKER.md)
 
 ---
 
@@ -159,6 +179,8 @@ This enables:
 
 No async scheduling required.
 
+→ Record definition: [docs/api/RECORD.md](docs/api/RECORD.md)
+
 ---
 
 ## Hooks without policy
@@ -178,6 +200,8 @@ Typical uses:
 * Enqueue into a queue
 * Increment counters
 * Trigger async pipelines
+
+→ Hook semantics: [docs/api/EVENT_HANDLERS.md](docs/api/EVENT_HANDLERS.md)
 
 ---
 
@@ -242,6 +266,8 @@ This installs:
 
 * `lib.primitive.log`
 
+→ Integration details: [docs/api/AUTO.md](docs/api/AUTO.md)
+
 ---
 
 ### Manual / module usage
@@ -254,21 +280,14 @@ import { Manager, Worker } from "./log/index.js";
 
 ---
 
-## Documentation
+## Documentation Map
 
-Start here if you want to understand behavior and contracts, not just signatures.
-
-* [Quick Start](docs/usage/QUICK_START.md)
-* [Performance Notes](docs/usage/PERFORMANCE.md)
-* [Examples](docs/usage/EXAMPLES.md)
-* [Installation](docs/usage/INSTALLATION.md)
-* [API Documentation](docs/api/INDEX.md)
-* [Manager API](docs/api/MANAGER.md)
-* [Worker API](docs/api/WORKER.md)
-* [Record Structure](docs/api/RECORD.md)
-* [auto.js integration](docs/api/AUTO.md)
-
-(These mirror the interval project’s documentation layout.)
+* **Usage TOC** → [docs/usage/TOC.md](docs/usage/TOC.md)
+* **Quick Start** → [docs/usage/QUICKSTART.md](docs/usage/QUICKSTART.md)
+* **Examples Library** → [docs/usage/EXAMPLES_LIBRARY.md](docs/usage/EXAMPLES_LIBRARY.md)
+* **Advanced Examples** → [docs/usage/ADVANCED_EXAMPLES.md](docs/usage/ADVANCED_EXAMPLES.md)
+* **Performance Notes** → [docs/usage/PERFORMANCE.md](docs/usage/PERFORMANCE.md)
+* **API Index** → [docs/api/INDEX.md](docs/api/INDEX.md)
 
 ---
 
