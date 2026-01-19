@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>m7 Primitive Log – Debug & Test Page</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- m7-lib bootstrap (sets window.lib) -->
+    <script src="https://js.m7.org/gs/v1/bootStrap.js"></script>
+    <!-- auto.js registers lib.primitive.log.Manager / Worker -->
+    <script type="module" src="../src/auto.js"></script>
+    <!-- Your test logic -->
+    <script src="./test-log.js"></script>
+  </head>
+  <body>
+    <h1>m7 Primitive Log Test Page</h1>
+    <div id="status-line">Status: <span id="current-status">not initialized</span></div>
+    <div id="controls">
+      <button class="info" onclick="createBuckets()">Create Buckets</button>
+      <button class="primary" onclick="logMessages()">Log Messages</button>
+      <button class="warning" onclick="logHighVolume(50)">High Volume (50 logs)</button>
+      <button onclick="changeConsolePolicy('warn')">Console: Warn+</button>
+      <button onclick="changeConsolePolicy('off')">Console: Off</button>
+      <button class="secondary" onclick="showBucket('app')">Show 'app' Logs</button>
+      <button class="secondary" onclick="showBucket('errors')">Show 'errors' Logs</button>
+      <button class="info" onclick="listBuckets()">List Buckets / Stats</button>
+      <button class="danger" onclick="clearAll()">Clear All</button>
+      <button onclick="clearOutput()">Clear Output</button>
+    </div>
+    <div id="output">Output will appear here...\n</div>
+  </body>
+</html>
