@@ -1,108 +1,57 @@
-# Table of Contents – m7-js-lib-primitive-log
+# Usage Documentation — Table of Contents
 
-This page is the main navigation hub for the **m7-js-lib-primitive-log** documentation.
+This section contains **practical, user-facing guides** for using the log primitive in real applications.
 
-All links are relative to the `docs/` directory unless otherwise noted.
+If you are looking for **formal API definitions**, see the API index instead:
+
+- **API Index** → [../api/INDEX.md](../api/INDEX.md)
+
+If you’re completely new, start at the top and read downward.
 
 ---
 
 ## Getting Started
 
-* **[Quick Start](usage/QUICK_START.md)**
-  → Capture your first log records in minutes
+- **Quick Start** → [QUICKSTART.md](./QUICKSTART.md)  
+  Minimal setup, first logs, and recommended defaults.
 
-* **[Installation](usage/INSTALLATION.md)**
-  → auto.js vs module usage, browser vs runtime setup
-
----
-
-## Core Concepts
-
-* **[Usage Overview](usage/OVERVIEW.md)**
-  → Mental model, design guarantees, and data flow
-
-* **[Why a Logging Primitive?](WHY_A_PRIMITIVE.md)**
-  → Why capture is separated from transport, policy, and async work
+- **Installation** → [INSTALLATION.md](./INSTALLATION.md)  
+  Supported environments, bundlers, and import patterns.
 
 ---
 
-## API Reference
+## Examples
 
-* **[API Index](api/INDEX.md)**
-  → High-level API map
+- **Examples Library** → [EXAMPLES_LIBRARY.md](./EXAMPLES_LIBRARY.md)  
+  Common patterns, copy-paste snippets, and idiomatic usage.
 
-### Manager
-
-* **[Manager API](api/MANAGER.md)**
-  → Bucket registry, defaults, and orchestration
-
-**Key responsibilities:**
-
-* Creating and managing Workers (buckets)
-* Applying shared defaults
-* Providing a single entrypoint (`log(bucket, data, opts)`)
+- **Advanced Examples** → [ADVANCED_EXAMPLES.md](./ADVANCED_EXAMPLES.md)  
+  Multi-worker setups, routing strategies, hooks, and edge cases.
 
 ---
 
-### Worker
+## Performance & Design
 
-* **[Worker API](api/WORKER.md)**
-  → Single-stream logging, storage, hooks, and console policy
+- **Performance Notes** → [PERFORMANCE.md](./PERFORMANCE.md)  
+  Cost model, hot paths, allocations, and guidance for high-volume logging.
 
-**Key responsibilities:**
-
-* Synchronous record capture
-* Storage policy (unlimited or ring buffer)
-* Enable / disable control
-* Console emission
-* Hooks (`onEvent`, `onPrint`)
-
----
-
-### Records
-
-* **[Record Structure](api/RECORD.md)**
-  → Header/body split, timing metadata, invariants
-
-Covers:
-
-* `header.at`, `header.lastAt`, `header.delta`
-* Levels and metadata
-* Mutation and cloning behavior
-
----
-
-## Examples & Patterns
-
-* **[Examples](usage/EXAMPLES.md)**
-  → Copy-paste patterns for common logging scenarios
-
-Examples include:
-
-* Error capture
-* Burst analysis
-* Conditional console logging
-* Hook-driven pipelines
-* Workspace usage
-
----
-
-## Integration
-
-* **[auto.js Integration](api/AUTO.md)**
-  → Global registration via `m7-lib`
-
-* **[Performance Notes](usage/PERFORMANCE.md)**
-  → Hot-path costs, cloning tradeoffs, console impact
+- **Why Not `console.log`?** → [../WHY_NOT_CONSOLE_LOG.md](../WHY_NOT_CONSOLE_LOG.md)  
+  Design rationale and tradeoffs compared to native console logging.
 
 ---
 
 ## Policy & Meta
 
-* **[AI Usage Disclosure](AI_DISCLOSURE.md)**
-* **[Use Policy](USE_POLICY.md)**
-* **[License](../LICENSE.md)**
+- **Use Policy** → [../USE_POLICY.md](../USE_POLICY.md)  
+  Intended usage boundaries and non-goals.
+
+- **AI Disclosure** → [../AI_DISCLOSURE.md](../AI_DISCLOSURE.md)  
+  Notes on AI-assisted authorship and expectations.
 
 ---
 
-> Capture first. Decide later.
+## Navigation
+
+- **API Reference** → [../api/INDEX.md](../api/INDEX.md)
+- **Docs Root** → [./TOC.md](./TOC.md)
+- **Project README** → [../../README.md](../../README.md)

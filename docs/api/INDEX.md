@@ -1,60 +1,61 @@
-# API Documentation
+# API Index — m7-js-lib-primitive-log
 
-This section contains the spec-style API references for **m7-js-lib-primitive-log**.
+This directory contains the **spec-style API references** for the log primitive.
 
-If you’re new, start here:
+If you’re new to the project, start with:
 
-* [Quick Start](../usage/QUICK_START.md)
+- **Docs TOC** → [../usage/TOC.md](../usage/TOC.md)
+- **Quick Start** → [../usage/QUICKSTART.md](../usage/QUICKSTART.md)
+- **README** → [../../README.md](../../README.md)
+
+> There is intentionally **no default bucket**. If you only need one stream, instantiate a **Worker** directly.
 
 ---
 
 ## Core APIs
 
-* **Manager** → [MANAGER.md](./MANAGER.md)
+- **Manager** → [MANAGER.md](./MANAGER.md)  
+  Multi-bucket coordinator / routing layer (owns Workers, applies defaults, forwards `log/info/warn/error`).
 
-  * Create and manage named buckets (Workers)
-  * Apply shared defaults
-  * Single entrypoint for capture: `log(bucket, data, opts)`
+- **Worker** → [WORKER.md](./WORKER.md)  
+  Single log stream (“bucket”) with storage policy, enable gate, optional hooks, and console policy.
 
-* **Worker** → [WORKER.md](./WORKER.md)
+- **Record Structure** → [RECORD.md](./RECORD.md)  
+  The strict `{ header, body }` record shape, timing metadata, and invariants.
 
-  * Single log stream with its own storage policy
-  * Enable/disable control
-  * Optional hooks (`onEvent`, `onPrint`)
-  * Optional console emission policy
+---
 
-* **Record Structure** → [RECORD.md](./RECORD.md)
+## Hooks and Printing
 
-  * Strict header/body split
-  * Timing metadata (`at`, `lastAt`, `delta`)
-  * Invariants and portability notes
+- **Event Handlers** → [EVENT_HANDLERS.md](./EVENT_HANDLERS.md)  
+  Defines `onEvent` and `onPrint` semantics (sync, best-effort, never awaited).
 
 ---
 
 ## Integration
 
-* **auto.js** → [AUTO.md](./AUTO.md)
-
-  * Installs `lib.primitive.log` into **m7-lib**
-  * Requires only `m7-lib` + `auto.js` (module)
+- **auto.js** → [AUTO.md](./AUTO.md)  
+  Optional browser convenience that registers `lib.primitive.log` into `window.lib` (m7-lib).
 
 ---
 
-## API Contracts (Tooling / LLM)
+## Contracts
 
-These documents define **public, source-independent API contracts** intended for
-LLMs, tooling, and integration systems that must rely on *behavioral guarantees*
-rather than implementation details.
-
-* **Log Primitive API Contract (LLM-safe)** → [LOG_API_CONTRACT.md](./LOG_API_CONTRACT.md)
+- **Log Primitive API Contract (LLM/tooling-safe)** → [LOG_API_CONTRACT.md](./LOG_API_CONTRACT.md)  
+  Source-independent behavioral guarantees intended for tooling, integration layers, and LLM guidance.
 
 ---
 
-## Usage Docs
+## Related Usage Docs
 
-* **Installation** → [INSTALLATION.md](../usage/INSTALLATION.md)
-* **Quick Start** → [QUICK_START.md](../usage/QUICK_START.md)
-* **Examples** → [EXAMPLES.md](../usage/EXAMPLES.md)
-* **Advanced Examples** → [ADVANCED_EXAMPLES.md](../usage/ADVANCED_EXAMPLES.md)
-* **Performance Notes** → [PERFORMANCE.md](../usage/PERFORMANCE.md)
-* **Usage Guide / TOC** → [TOC.md](../usage/TOC.md)
+- **Installation** → [../usage/INSTALLATION.md](../usage/INSTALLATION.md)
+- **Examples Library** → [../usage/EXAMPLES_LIBRARY.md](../usage/EXAMPLES_LIBRARY.md)
+- **Advanced Examples** → [../usage/ADVANCED_EXAMPLES.md](../usage/ADVANCED_EXAMPLES.md)
+- **Performance Notes** → [../usage/PERFORMANCE.md](../usage/PERFORMANCE.md)
+
+---
+
+## Navigation
+
+- **Up one level (docs/)** → [../usage/TOC.md](../usage/TOC.md)
+- **Project root README** → [../../README.md](../../README.md)
