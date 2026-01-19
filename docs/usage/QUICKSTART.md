@@ -77,7 +77,7 @@ No configuration required.
 Each bucket stores records in memory.
 
 ```js
-const worker = log.getBucket('errors');
+const worker = log.bucket('errors');
 
 console.log(worker.records);
 ```
