@@ -152,7 +152,7 @@ worker.warn('something happened');
 ## Related Docs
 
 * **Installation** → [../usage/INSTALLATION.md](../usage/INSTALLATION.md)
-* **Quick Start** → [../usage/QUICK_START.md](../usage/QUICK_START.md)
+* **Quick Start** → [../usage/QUICKSTART.md](../usage/QUICKSTART.md)
 * **Manager API** → [MANAGER.md](./MANAGER.md)
 * **Worker API** → [WORKER.md](./WORKER.md)
 
@@ -389,66 +389,67 @@ const worker = new Worker({
 
 # --- begin: docs/api/INDEX.md ---
 
-# API Documentation
+# API Index — m7-js-lib-primitive-log
 
-This section contains the spec-style API references for **m7-js-lib-primitive-log**.
+This directory contains the **spec-style API references** for the log primitive.
 
-If you’re new, start here:
+If you’re new to the project, start with:
 
-* [Quick Start](../usage/QUICK_START.md)
+- **Docs TOC** → [../usage/TOC.md](../usage/TOC.md)
+- **Quick Start** → [../usage/QUICKSTART.md](../usage/QUICKSTART.md)
+- **README** → [../../README.md](../../README.md)
+
+> There is intentionally **no default bucket**. If you only need one stream, instantiate a **Worker** directly.
 
 ---
 
 ## Core APIs
 
-* **Manager** → [MANAGER.md](./MANAGER.md)
+- **Manager** → [MANAGER.md](./MANAGER.md)  
+  Multi-bucket coordinator / routing layer (owns Workers, applies defaults, forwards `log/info/warn/error`).
 
-  * Create and manage named buckets (Workers)
-  * Apply shared defaults
-  * Single entrypoint for capture: `log(bucket, data, opts)`
+- **Worker** → [WORKER.md](./WORKER.md)  
+  Single log stream (“bucket”) with storage policy, enable gate, optional hooks, and console policy.
 
-* **Worker** → [WORKER.md](./WORKER.md)
+- **Record Structure** → [RECORD.md](./RECORD.md)  
+  The strict `{ header, body }` record shape, timing metadata, and invariants.
 
-  * Single log stream with its own storage policy
-  * Enable/disable control
-  * Optional hooks (`onEvent`, `onPrint`)
-  * Optional console emission policy
+---
 
-* **Record Structure** → [RECORD.md](./RECORD.md)
+## Hooks and Printing
 
-  * Strict header/body split
-  * Timing metadata (`at`, `lastAt`, `delta`)
-  * Invariants and portability notes
+- **Event Handlers** → [EVENT_HANDLERS.md](./EVENT_HANDLERS.md)  
+  Defines `onEvent` and `onPrint` semantics (sync, best-effort, never awaited).
 
 ---
 
 ## Integration
 
-* **auto.js** → [AUTO.md](./AUTO.md)
-
-  * Installs `lib.primitive.log` into **m7-lib**
-  * Requires only `m7-lib` + `auto.js` (module)
+- **auto.js** → [AUTO.md](./AUTO.md)  
+  Optional browser convenience that registers `lib.primitive.log` into `window.lib` (m7-lib).
 
 ---
 
-## API Contracts (Tooling / LLM)
+## Contracts
 
-These documents define **public, source-independent API contracts** intended for
-LLMs, tooling, and integration systems that must rely on *behavioral guarantees*
-rather than implementation details.
-
-* **Log Primitive API Contract (LLM-safe)** → [LOG_API_CONTRACT.md](./LOG_API_CONTRACT.md)
+- **Log Primitive API Contract (LLM/tooling-safe)** → [LOG_API_CONTRACT.md](./LOG_API_CONTRACT.md)  
+  Source-independent behavioral guarantees intended for tooling, integration layers, and LLM guidance.
 
 ---
 
-## Usage Docs
+## Related Usage Docs
 
-* **Installation** → [INSTALLATION.md](../usage/INSTALLATION.md)
-* **Quick Start** → [QUICK_START.md](../usage/QUICK_START.md)
-* **Examples** → [EXAMPLES.md](../usage/EXAMPLES.md)
-* **Advanced Examples** → [ADVANCED_EXAMPLES.md](../usage/ADVANCED_EXAMPLES.md)
-* **Performance Notes** → [PERFORMANCE.md](../usage/PERFORMANCE.md)
-* **Usage Guide / TOC** → [TOC.md](../usage/TOC.md)
+- **Installation** → [../usage/INSTALLATION.md](../usage/INSTALLATION.md)
+- **Examples Library** → [../usage/EXAMPLES_LIBRARY.md](../usage/EXAMPLES_LIBRARY.md)
+- **Advanced Examples** → [../usage/ADVANCED_EXAMPLES.md](../usage/ADVANCED_EXAMPLES.md)
+- **Performance Notes** → [../usage/PERFORMANCE.md](../usage/PERFORMANCE.md)
+
+---
+
+## Navigation
+
+- **Up one level (docs/)** → [../usage/TOC.md](../usage/TOC.md)
+- **Project root README** → [../../README.md](../../README.md)
 
 
 # --- end: docs/api/INDEX.md ---
@@ -1909,9 +1910,9 @@ If you truly don’t want local storage, configure a very small ring buffer.
 
 ## Related Docs
 
-* [Quick Start](./QUICK_START.md)
+* [Quick Start](./QUICKSTART.md)
 * [Installation](./INSTALLATION.md)
-* [Examples](./EXAMPLES.md)
+* [Examples](./EXAMPLES_LIBRARY.md)
 * [Performance Notes](./PERFORMANCE.md)
 * [API Docs](../api/INDEX.md)
 
@@ -2099,7 +2100,7 @@ worker.log({ msg: 'something happened', x: 1 });
 
 ## Related Docs
 
-* [Quick Start](./QUICK_START.md)
+* [Quick Start](./QUICKSTART.md)
 * [Installation](./INSTALLATION.md)
 * [Performance Notes](./PERFORMANCE.md)
 * [API Docs](../api/INDEX.md)
@@ -2286,8 +2287,8 @@ import { Manager } from 'm7-js-lib-primitive-log';
 
 ## Related Docs
 
-* **Quick Start** → [`QUICK_START.md`](./QUICK_START.md)
-* **Examples** → [`EXAMPLES.md`](./EXAMPLES.md)
+* **Quick Start** → [`QUICKSTART.md`](./QUICKSTART.md)
+* **Examples** → [`EXAMPLES_LIBRARY.md`](./EXAMPLES_LIBRARY.md)
 * **API Docs** → [`../api/INDEX.md`](../api/INDEX.md)
 
 
@@ -2608,7 +2609,7 @@ There are no background tasks to stop and no async resources to dispose.
 
 ## Next Steps
 
-* Deeper usage patterns → [EXAMPLES.md](./EXAMPLES.md)
+* Deeper usage patterns → [EXAMPLES_LIBRARY.md](./EXAMPLES_LIBRARY.md)
 * Performance characteristics → [PERFORMANCE.md](./PERFORMANCE.md)
 * Full API reference → [../api/INDEX.md](../api/INDEX.md)
 
@@ -2623,114 +2624,63 @@ There are no background tasks to stop and no async resources to dispose.
 
 # --- begin: docs/usage/TOC.md ---
 
-# Table of Contents – m7-js-lib-primitive-log
+# Usage Documentation — Table of Contents
 
-This page is the main navigation hub for the **m7-js-lib-primitive-log** documentation.
+This section contains **practical, user-facing guides** for using the log primitive in real applications.
 
-All links are relative to the `docs/` directory unless otherwise noted.
+If you are looking for **formal API definitions**, see the API index instead:
+
+- **API Index** → [../api/INDEX.md](../api/INDEX.md)
+
+If you’re completely new, start at the top and read downward.
 
 ---
 
 ## Getting Started
 
-* **[Quick Start](usage/QUICK_START.md)**
-  → Capture your first log records in minutes
+- **Quick Start** → [QUICKSTART.md](./QUICKSTART.md)  
+  Minimal setup, first logs, and recommended defaults.
 
-* **[Installation](usage/INSTALLATION.md)**
-  → auto.js vs module usage, browser vs runtime setup
-
----
-
-## Core Concepts
-
-* **[Usage Overview](usage/OVERVIEW.md)**
-  → Mental model, design guarantees, and data flow
-
-* **[Why a Logging Primitive?](WHY_A_PRIMITIVE.md)**
-  → Why capture is separated from transport, policy, and async work
+- **Installation** → [INSTALLATION.md](./INSTALLATION.md)  
+  Supported environments, bundlers, and import patterns.
 
 ---
 
-## API Reference
+## Examples
 
-* **[API Index](api/INDEX.md)**
-  → High-level API map
+- **Examples Library** → [EXAMPLES_LIBRARY.md](./EXAMPLES_LIBRARY.md)  
+  Common patterns, copy-paste snippets, and idiomatic usage.
 
-### Manager
-
-* **[Manager API](api/MANAGER.md)**
-  → Bucket registry, defaults, and orchestration
-
-**Key responsibilities:**
-
-* Creating and managing Workers (buckets)
-* Applying shared defaults
-* Providing a single entrypoint (`log(bucket, data, opts)`)
+- **Advanced Examples** → [ADVANCED_EXAMPLES.md](./ADVANCED_EXAMPLES.md)  
+  Multi-worker setups, routing strategies, hooks, and edge cases.
 
 ---
 
-### Worker
+## Performance & Design
 
-* **[Worker API](api/WORKER.md)**
-  → Single-stream logging, storage, hooks, and console policy
+- **Performance Notes** → [PERFORMANCE.md](./PERFORMANCE.md)  
+  Cost model, hot paths, allocations, and guidance for high-volume logging.
 
-**Key responsibilities:**
-
-* Synchronous record capture
-* Storage policy (unlimited or ring buffer)
-* Enable / disable control
-* Console emission
-* Hooks (`onEvent`, `onPrint`)
-
----
-
-### Records
-
-* **[Record Structure](api/RECORD.md)**
-  → Header/body split, timing metadata, invariants
-
-Covers:
-
-* `header.at`, `header.lastAt`, `header.delta`
-* Levels and metadata
-* Mutation and cloning behavior
-
----
-
-## Examples & Patterns
-
-* **[Examples](usage/EXAMPLES.md)**
-  → Copy-paste patterns for common logging scenarios
-
-Examples include:
-
-* Error capture
-* Burst analysis
-* Conditional console logging
-* Hook-driven pipelines
-* Workspace usage
-
----
-
-## Integration
-
-* **[auto.js Integration](api/AUTO.md)**
-  → Global registration via `m7-lib`
-
-* **[Performance Notes](usage/PERFORMANCE.md)**
-  → Hot-path costs, cloning tradeoffs, console impact
+- **Why Not `console.log`?** → [../WHY_NOT_CONSOLE_LOG.md](../WHY_NOT_CONSOLE_LOG.md)  
+  Design rationale and tradeoffs compared to native console logging.
 
 ---
 
 ## Policy & Meta
 
-* **[AI Usage Disclosure](AI_DISCLOSURE.md)**
-* **[Use Policy](USE_POLICY.md)**
-* **[License](../LICENSE.md)**
+- **Use Policy** → [../USE_POLICY.md](../USE_POLICY.md)  
+  Intended usage boundaries and non-goals.
+
+- **AI Disclosure** → [../AI_DISCLOSURE.md](../AI_DISCLOSURE.md)  
+  Notes on AI-assisted authorship and expectations.
 
 ---
 
-> Capture first. Decide later.
+## Navigation
+
+- **API Reference** → [../api/INDEX.md](../api/INDEX.md)
+- **Docs Root** → [./TOC.md](./TOC.md)
+- **Project README** → [../../README.md](../../README.md)
 
 
 # --- end: docs/usage/TOC.md ---
@@ -3047,15 +2997,31 @@ It is a primitive, not a framework.
 
 ---
 
+## Navigation
+
+If you are new to the project, the recommended reading order is:
+
+1. **Quick Start** → [docs/usage/QUICKSTART.md](docs/usage/QUICKSTART.md)
+2. **Usage TOC** → [docs/usage/TOC.md](docs/usage/TOC.md)
+3. **API Index** → [docs/api/INDEX.md](docs/api/INDEX.md)
+
+Related meta documents:
+
+- **Why not `console.log`?** → [docs/WHY_NOT_CONSOLE_LOG.md](docs/WHY_NOT_CONSOLE_LOG.md)
+- **Use Policy** → [docs/USE_POLICY.md](docs/USE_POLICY.md)
+- **AI Disclosure** → [docs/AI_DISCLOSURE.md](docs/AI_DISCLOSURE.md)
+
+---
+
 ## Why this exists
 
 If you have ever:
 
-* Needed to inspect logs live without shipping them anywhere
-* Had async logging introduce latency, ordering issues, or hidden drops
-* Been forced into deep cloning when you didn’t need it
-* Wanted deterministic timing metadata without scheduling complexity
-* Needed a hook point without committing to a transport or backend
+- Needed to inspect logs live without shipping them anywhere
+- Had async logging introduce latency, ordering issues, or hidden drops
+- Been forced into deep cloning when you didn’t need it
+- Wanted deterministic timing metadata without scheduling complexity
+- Needed a hook point without committing to a transport or backend
 
 Then you have already discovered the limits of “full-featured” logging frameworks.
 
@@ -3065,13 +3031,13 @@ This library solves those problems by separating capture from policy.
 
 ## What this library guarantees
 
-* Log capture is synchronous and deterministic
-* Storage is explicitly bounded (unlimited or ring buffer)
-* Records have a strict header/body split
-* Timing metadata is explicit and reliable (`at`, `lastAt`, `delta`)
-* Mutation safety is opt-in, not forced
-* Hooks (`onEvent`, `onPrint`) are best-effort and non-fatal
-* No async work is hidden or implied
+- Log capture is synchronous and deterministic
+- Storage is explicitly bounded (unlimited or ring buffer)
+- Records have a strict header/body split
+- Timing metadata is explicit and reliable (`at`, `lastAt`, `delta`)
+- Mutation safety is opt-in, not forced
+- Hooks (`onEvent`, `onPrint`) are best-effort and non-fatal
+- No async work is hidden or implied
 
 These guarantees are enforced by design, not convention.
 
@@ -3113,7 +3079,9 @@ A registry and convenience layer responsible for:
 * Applying shared defaults
 * Providing a single entrypoint (`log(bucket, data, opts)`)
 
-Think of it as the control plane.
+Think of it as the **control plane**.
+
+→ Detailed API: [docs/api/MANAGER.md](docs/api/MANAGER.md)
 
 ---
 
@@ -3129,7 +3097,9 @@ A single log stream with its own:
 * Clock source
 * Workspace
 
-Think of it as the execution plane.
+Think of it as the **execution plane**.
+
+→ Detailed API: [docs/api/WORKER.md](docs/api/WORKER.md)
 
 ---
 
@@ -3196,6 +3166,8 @@ This enables:
 
 No async scheduling required.
 
+→ Record definition: [docs/api/RECORD.md](docs/api/RECORD.md)
+
 ---
 
 ## Hooks without policy
@@ -3215,6 +3187,8 @@ Typical uses:
 * Enqueue into a queue
 * Increment counters
 * Trigger async pipelines
+
+→ Hook semantics: [docs/api/EVENT_HANDLERS.md](docs/api/EVENT_HANDLERS.md)
 
 ---
 
@@ -3279,6 +3253,8 @@ This installs:
 
 * `lib.primitive.log`
 
+→ Integration details: [docs/api/AUTO.md](docs/api/AUTO.md)
+
 ---
 
 ### Manual / module usage
@@ -3291,21 +3267,14 @@ import { Manager, Worker } from "./log/index.js";
 
 ---
 
-## Documentation
+## Documentation Map
 
-Start here if you want to understand behavior and contracts, not just signatures.
-
-* [Quick Start](docs/usage/QUICK_START.md)
-* [Performance Notes](docs/usage/PERFORMANCE.md)
-* [Examples](docs/usage/EXAMPLES.md)
-* [Installation](docs/usage/INSTALLATION.md)
-* [API Documentation](docs/api/INDEX.md)
-* [Manager API](docs/api/MANAGER.md)
-* [Worker API](docs/api/WORKER.md)
-* [Record Structure](docs/api/RECORD.md)
-* [auto.js integration](docs/api/AUTO.md)
-
-(These mirror the interval project’s documentation layout.)
+* **Usage TOC** → [docs/usage/TOC.md](docs/usage/TOC.md)
+* **Quick Start** → [docs/usage/QUICKSTART.md](docs/usage/QUICKSTART.md)
+* **Examples Library** → [docs/usage/EXAMPLES_LIBRARY.md](docs/usage/EXAMPLES_LIBRARY.md)
+* **Advanced Examples** → [docs/usage/ADVANCED_EXAMPLES.md](docs/usage/ADVANCED_EXAMPLES.md)
+* **Performance Notes** → [docs/usage/PERFORMANCE.md](docs/usage/PERFORMANCE.md)
+* **API Index** → [docs/api/INDEX.md](docs/api/INDEX.md)
 
 ---
 

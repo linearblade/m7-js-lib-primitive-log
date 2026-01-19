@@ -106,6 +106,6 @@ worker.warn('something happened');
 ## Related Docs
 
 * **Installation** → [../usage/INSTALLATION.md](../usage/INSTALLATION.md)
-* **Quick Start** → [../usage/QUICK_START.md](../usage/QUICK_START.md)
+* **Quick Start** → [../usage/QUICKSTART.md](../usage/QUICKSTART.md)
 * **Manager API** → [MANAGER.md](./MANAGER.md)
 * **Worker API** → [WORKER.md](./WORKER.md)

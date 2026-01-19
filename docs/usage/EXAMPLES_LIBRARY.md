@@ -175,7 +175,7 @@ worker.log({ msg: 'something happened', x: 1 });
 
 ## Related Docs
 
-* [Quick Start](./QUICK_START.md)
+* [Quick Start](./QUICKSTART.md)
 * [Installation](./INSTALLATION.md)
 * [Performance Notes](./PERFORMANCE.md)
 * [API Docs](../api/INDEX.md)

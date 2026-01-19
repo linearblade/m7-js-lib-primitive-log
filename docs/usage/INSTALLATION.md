@@ -173,6 +173,6 @@ import { Manager } from 'm7-js-lib-primitive-log';
 
 ## Related Docs
 
-* **Quick Start** → [`QUICK_START.md`](./QUICK_START.md)
-* **Examples** → [`EXAMPLES.md`](./EXAMPLES.md)
+* **Quick Start** → [`QUICKSTART.md`](./QUICKSTART.md)
+* **Examples** → [`EXAMPLES_LIBRARY.md`](./EXAMPLES_LIBRARY.md)
 * **API Docs** → [`../api/INDEX.md`](../api/INDEX.md)

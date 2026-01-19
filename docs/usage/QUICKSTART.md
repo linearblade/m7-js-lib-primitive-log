@@ -170,7 +170,7 @@ There are no background tasks to stop and no async resources to dispose.
 
 ## Next Steps
 
-* Deeper usage patterns → [EXAMPLES.md](./EXAMPLES.md)
+* Deeper usage patterns → [EXAMPLES_LIBRARY.md](./EXAMPLES_LIBRARY.md)
 * Performance characteristics → [PERFORMANCE.md](./PERFORMANCE.md)
 * Full API reference → [../api/INDEX.md](../api/INDEX.md)
 

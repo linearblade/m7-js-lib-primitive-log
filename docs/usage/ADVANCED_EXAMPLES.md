@@ -258,8 +258,8 @@ If you truly don’t want local storage, configure a very small ring buffer.
 
 ## Related Docs
 
-* [Quick Start](./QUICK_START.md)
+* [Quick Start](./QUICKSTART.md)
 * [Installation](./INSTALLATION.md)
-* [Examples](./EXAMPLES.md)
+* [Examples](./EXAMPLES_LIBRARY.md)
 * [Performance Notes](./PERFORMANCE.md)
 * [API Docs](../api/INDEX.md)
