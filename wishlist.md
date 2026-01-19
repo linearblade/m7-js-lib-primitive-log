@@ -8,19 +8,7 @@ None of the items below are required for correctness or current production use.
 1. Documentation & Developer Experience
 
 1.1 API Documentation
-	•	Full JSDoc coverage for:
-	•	Worker
-	•	Manager
-	•	utils (public portions)
-	•	constants
-	•	Explicit documentation of:
-	•	Synchronous design contract (no implicit async)
-	•	onEvent invocation semantics (sync call, not awaited; async handlers must self-manage)
-	•	Clone semantics (clone precedence: Manager → bucket → call; best-effort guarantees)
-	•	Timing metadata (header.at, header.lastAt, header.delta)
-	•	Ring buffer ordering guarantees and overwrite behavior
-	•	Bucket name validation rules (validateBucketName behavior)
-
+    done
 1.2 Behavioral Guides
 
 “How it actually behaves” docs (not just signatures):
@@ -41,19 +29,9 @@ None of the items below are required for correctness or current production use.
 2. Public Surface & Packaging
 
 2.1 Public API Surface Declaration
-	•	Decide and document what is “public/stable”:
-	•	Option A: Manager, Worker, constants are stable; utils is internal
-	•	Option B: everything exported is stable (including utils)
-	•	Provide a clean entrypoint:
-	•	index.js for standard imports
-	•	auto.js for window.lib registration (lib.primitive.log)
-
+    done
 2.2 Build/Distribution Hygiene
-	•	Remove editor backup artifacts (e.g. auto.js~)
-	•	Optional: package.json exports map for:
-	•	"." → index
-	•	"./auto" → auto registration
-
+    done
 ⸻
 
 3. Telemetry & Observability
@@ -82,12 +60,7 @@ Add optional counters to support high-volume use without introducing policy:
 4.1 JSON-Safe Snapshot Helper
 
 Provide a helper to support export without promising universal deep copy:
-	•	e.g. utils.toJSONSafe(record) or utils.sanitize(value, opts)
-	•	Goals:
-	•	prevent accidental exfil of complex objects (DOM nodes, Response objects)
-	•	reduce payload size
-	•	Non-goal: full fidelity serialization of arbitrary graphs.
-
+	done
 4.2 Shape Reduction Helpers
 
 Optional helpers to reduce payload volume:
