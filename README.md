@@ -1,276 +1,303 @@
-# Interval Manager
+Log Primitive
 
-> A **policy-driven async scheduler** for environments where `setInterval` is not safe.
+A synchronous event/log capture primitive designed for live inspection, high-throughput instrumentation, and composable observability pipelines.
 
-This project exists because **`setInterval` breaks down the moment real-world constraints appear**: async work, overlapping executions, background tabs, offline states, and error handling.
+This project exists because most logging systems conflate event capture with transport, async scheduling, and policy, making them slow, opaque, or brittle under real-world load.
 
-This is **not** a drop-in timer wrapper. It is a systems-level primitive designed to make recurring async work *correct by default*.
+This library does one thing well:
+capture structured log events synchronously with bounded memory and explicit extension points.
 
----
+It is a primitive, not a framework.
 
-## Why this exists
+⸻
+
+Why this exists
 
 If you have ever:
+	•	Needed to inspect logs live without shipping them anywhere
+	•	Had async logging introduce latency, ordering issues, or hidden drops
+	•	Been forced into deep cloning when you didn’t need it
+	•	Wanted deterministic timing metadata without scheduling complexity
+	•	Needed a hook point without committing to a transport or backend
 
-* Had async interval callbacks overlap and corrupt state
-* Watched intervals silently die after an exception
-* Needed to pause background work when a tab is hidden
-* Wanted cancellation *with a reason*, not just a boolean
-* Needed backpressure instead of runaway execution
+Then you have already discovered the limits of “full-featured” logging frameworks.
 
-Then you have already discovered the limits of `setInterval`.
+This library solves those problems by separating capture from policy.
 
-This library solves those problems explicitly.
+⸻
 
----
-
-## What this library guarantees
-
-* Interval callbacks **never overlap** unless explicitly allowed
-* Errors are handled deterministically via **error policies**
-* Cancellation always occurs **with a reason**
-* Environment changes (hidden / offline / suspended) are enforced consistently
-* Internal failures never crash the scheduler
-* Observability hooks never interfere with execution
+What this library guarantees
+	•	Log capture is synchronous and deterministic
+	•	Storage is explicitly bounded (unlimited or ring buffer)
+	•	Records have a strict header/body split
+	•	Timing metadata is explicit and reliable (at, lastAt, delta)
+	•	Mutation safety is opt-in, not forced
+	•	Hooks (onEvent, onPrint) are best-effort and non-fatal
+	•	No async work is hidden or implied
 
 These guarantees are enforced by design, not convention.
 
----
+⸻
 
-## Quick example (safe by default)
+Quick example (safe by default)
 
-```js
-import { IntervalManager } from 'interval-manager';
+import { Manager } from 'primitive-log';
 
-const manager = new IntervalManager();
+const log = new Manager();
 
-manager.register({
-  name: 'health-check',
-  everyMs: 1000,
-  fn: async () => {
-    await fetch('/health');
-  }
+log.createBucket('errors');
+
+log.log('errors', new Error('boom'), {
+  level: 'error'
 });
-```
 
-**By default this interval:**
+By default this:
+	•	Stores records synchronously
+	•	Uses in-memory storage only
+	•	Does not clone payloads
+	•	Does not ship data anywhere
+	•	Does not block on async work
 
-* Will never overlap executions
-* Will pause when the environment is hidden
-* Will not silently die on error
-* Can be cancelled with an explicit reason
+No configuration required.
 
-No extra configuration required.
+⸻
 
----
+Core concepts
 
-## Core concepts
+Manager
 
-### IntervalManager
+A registry and convenience layer responsible for:
+	•	Managing named log buckets (Workers)
+	•	Applying shared defaults
+	•	Providing a single entrypoint (log(bucket, data, opts))
 
-A registry and policy engine responsible for:
+Think of it as the control plane.
 
-* Interval lifecycle management
-* Environment enforcement
-* Centralized cancellation
-* Observability hooks
+⸻
 
-Think of it as the **control plane**.
+Worker
 
-### ManagedInterval
+A single log stream with its own:
+	•	Storage policy (unlimited or ring buffer)
+	•	Enable/disable switch
+	•	Console emission policy
+	•	Optional event hook (onEvent)
+	•	Optional printer (onPrint)
+	•	Clock source
+	•	Workspace
 
-A single scheduled task with:
+Think of it as the execution plane.
 
-* Overlap policy (`skip`, `coalesce`, `queue`)
-* Error policy (`continue`, `pause`, `cancel`, `backoff`)
-* Explicit lifecycle state
-* Deterministic execution semantics
+⸻
 
-Think of it as the **execution plane**.
+Synchronous by design
 
----
+This library is intentionally synchronous.
+	•	emit() / log() return immediately
+	•	onEvent is invoked synchronously and not awaited
+	•	Async handlers are allowed, but must manage their own backpressure
 
-## Policies, not flags
+This ensures:
+	•	predictable performance
+	•	no hidden scheduling
+	•	no surprise latency
 
-This library is intentionally **policy-driven**.
+Async work belongs outside the primitive.
 
-Instead of ad-hoc booleans, you declare intent:
+⸻
 
-```js
-manager.register({
-  name: 'sync',
-  everyMs: 2000,
-  overlap: 'queue',
-  maxQueue: 5,
-  onError: 'backoff',
-  fn: async () => {
-    await syncData();
-  }
-});
-```
+Mutation & cloning semantics
 
-Policies compose cleanly and behave predictably.
+By default, logged payloads are stored by reference.
 
----
+This is intentional.
 
-## Environment-aware by design
+Clone policy
 
-The manager can respond to environment signals such as:
+Cloning is:
+	•	off by default
+	•	opt-in per Worker or per call
+	•	best-effort, not guaranteed
 
-* visibility changes
-* offline state
-* explicit suspension
+log.log('errors', data, { clone: true });
 
-```js
-manager.updateEnvironment({ visible: false });
-```
+Cloning uses:
+	1.	structuredClone when available
+	2.	lib.utils.deepCopy if present
+	3.	original reference as a fallback
 
-Intervals are paused and resumed **deterministically**, without losing state or corrupting execution order.
+This keeps the hot path fast and puts responsibility where it belongs.
 
----
+⸻
 
-## Observability without interference
+Timing metadata
 
-All lifecycle events emit structured telemetry:
+Each record includes:
+	•	header.at – timestamp of emission
+	•	header.lastAt – timestamp of previous record in the same bucket (if any)
+	•	header.delta – time difference between records
 
-```js
-const manager = new IntervalManager({
-  onEvent(event) {
-    console.log(event.type, event.reason);
-  }
-});
-```
+This enables:
+	•	burst detection
+	•	sampling logic
+	•	rate estimation
+	•	heatmaps
 
-Telemetry errors are swallowed by design. Observability can never destabilize execution.
+No async scheduling required.
 
----
+⸻
 
-## Features
+Hooks without policy
 
-* Centralized registry for named intervals
-* Per-interval policies: overlap (`skip` / `coalesce` / `queue`), error handling (`continue` / `pause` / `cancel` / `backoff`)
-* Deterministic lifecycle: start, pause, resume, cancel, dispose
-* Environment-aware execution (visibility, offline, suspension)
-* Manual triggering (`runNow`) and single-step execution (`step`)
-* Mutable per-interval workspace
-* Queue limits and backpressure
-* Optional custom clock injection (testing / simulation)
-* Structured lifecycle telemetry
-* Optional auto-removal of completed or cancelled intervals
+onEvent
 
----
+onEvent(record, worker, workspace)
 
-## What this library does *not* do
+	•	Called synchronously after a record is accepted
+	•	Errors are swallowed
+	•	Return value is ignored
+
+This hook exists to signal external systems, not to run them.
+
+Typical uses:
+	•	enqueue into a queue
+	•	increment counters
+	•	trigger async pipelines
+
+⸻
+
+onPrint
+
+onPrint(record, ctx, workspace)
+
+Used for console output only.
+
+Console printing is often the largest performance cost and should be used selectively.
+
+⸻
+
+Features
+	•	Synchronous log/event capture
+	•	Strict header/body record structure
+	•	Unlimited or ring-buffer storage
+	•	Deterministic timing metadata
+	•	Explicit clone control
+	•	Per-bucket configuration
+	•	Manager-level defaults
+	•	Workspace propagation
+	•	Best-effort hooks and printing
+	•	No async assumptions
+	•	No transport assumptions
+
+⸻
+
+What this library does not do
 
 This project is intentionally scoped.
 
-It does **not**:
+It does not:
+	•	Ship logs to a server
+	•	Batch or retry network requests
+	•	Perform sampling or aggregation
+	•	Guarantee delivery
+	•	Enforce schemas
+	•	Provide async logging modes
+	•	Act as a metrics or tracing system
 
-* Act as a cron scheduler
-* Persist tasks across reloads
-* Coordinate across processes or machines
-* Attempt to replace job queues or workflow engines
+Those belong in composed layers, not primitives.
 
-It solves one problem well: **correct recurring async execution in hostile environments**.
+⸻
 
----
+Installation
 
-## Installation
+This package is not yet available via npm or yarn.
 
-This package is **not yet available via npm or yarn**.
+Recommended (auto.js)
 
-### Recommended (auto.js)
+If you are already using m7-lib, the simplest setup is:
 
-If you are already using **m7-lib**, the simplest setup is:
-
-```html
 <script src="/path/to/m7-lib.min.js"></script>
-<script type="module" src="/path/to/interval/auto.js"></script>
-```
+<script type="module" src="/path/to/log/auto.js"></script>
 
 This installs:
 
-```js
-lib.interval.manager   // IntervalManager factory
-```
+lib.primitive.log
 
-### Manual / Module usage
 
-```js
-import { IntervalManager } from './lib/interval/IntervalManager.js';
-```
+⸻
 
-> `m7-lib` (v0.98+) is required **only** when using `auto.js`.
+Manual / Module usage
 
----
+import { Manager, Worker } from './log/index.js';
 
-## Documentation
+m7-lib is required only when using auto.js.
 
-Start here if you want to understand *how the system behaves*, not just how to call it.
+⸻
 
-* **Quick Start** → [`docs/usage/QUICKSTART.md`](docs/usage/QUICKSTART.md)
-* **Why not setInterval?** → [`docs/WHY_NOT_SETINTERVAL.md`](docs/WHY_NOT_SETINTERVAL.md)
-* **Examples Library** → [`docs/usage/EXAMPLES_LIBRARY.md`](docs/usage/EXAMPLES_LIBRARY.md)
-* **Installation Details** → [`docs/usage/INSTALLATION.md`](docs/usage/INSTALLATION.md)
-* **API Documentation** → [`docs/api/INDEX.md`](docs/api/INDEX.md)
+Documentation
 
-  * **Interval API Contract** → [`docs/api/INTERVAL_API_CONTRACT.md`](docs/api/INTERVAL_API_CONTRACT.md)
-  * **IntervalManager API** → [`docs/api/INTERVAL_MANAGER.md`](docs/api/INTERVAL_MANAGER.md)
-  * **ManagedInterval API** → [`docs/api/MANAGED_INTERVAL.md`](docs/api/MANAGED_INTERVAL.md)
-  * **auto.js integration** → [`docs/api/AUTO.md`](docs/api/AUTO.md)
+Start here if you want to understand behavior and contracts, not just signatures.
+	•	Usage Overview → docs/usage/OVERVIEW.md
+	•	Performance Notes → docs/usage/PERFORMANCE.md
+	•	Examples → docs/usage/EXAMPLES.md
+	•	Installation → docs/usage/INSTALLATION.md
+	•	API Documentation → docs/api/INDEX.md
+	•	Manager API → docs/api/MANAGER.md
+	•	Worker API → docs/api/WORKER.md
+	•	Record Structure → docs/api/RECORD.md
+	•	auto.js integration → docs/api/AUTO.md
 
----
+(These mirror the interval project’s documentation layout.)
 
-## Portfolio note
+⸻
 
-This project is designed as a **systems-level scheduling primitive**, not a convenience utility.
+Portfolio note
+
+This project is designed as a systems-level logging primitive, not a convenience logger.
 
 It demonstrates:
+	•	Explicit responsibility boundaries
+	•	Synchronous hot-path design
+	•	Deterministic state handling
+	•	Policy-free core architecture
+	•	Composability over features
 
-* Explicit state-machine design
-* Policy-driven execution control
-* Defensive async programming
-* Deterministic lifecycle management
-* Clear separation of control and execution planes
+⸻
 
-The code prioritizes **correctness, clarity, and long-term maintainability** over cleverness.
+License
 
-## License
+See LICENSE.md￼ for full terms.
+	•	Free for personal, non-commercial use
+	•	Commercial licensing available under the M7 Moderate Team License (MTL-10)
 
-See [`LICENSE.md`](LICENSE.md) for full terms.
+⸻
 
-* Free for personal, non-commercial use
-* Commercial licensing available under the **M7 Moderate Team License (MTL-10)**
+Integration & Support
 
----
+For commercial usage, integration assistance, or support contracts:
+	•	📩 legal@m7.org￼
 
-## Integration & Support
+⸻
 
-If you’re interested in commercial usage, integration assistance, or support contracts, contact:
-
-* 📩 [legal@m7.org](mailto:legal@m7.org)
-
----
-
-## AI Usage Disclosure
+AI Usage Disclosure
 
 See:
-
-* [`docs/AI_DISCLOSURE.md`](docs/AI_DISCLOSURE.md)
-* [`docs/USE_POLICY.md`](docs/USE_POLICY.md)
+	•	docs/AI_DISCLOSURE.md
+	•	docs/USE_POLICY.md
 
 for permitted use of AI in derivative tools or automation layers.
 
----
+⸻
 
-## Philosophy
+Philosophy
 
-> “Initialize only what you mean to use.”
-> Avoid premature assumptions and maintain precise control over application lifecycle stages.
+“Capture first. Decide later.”
 
----
+Avoid embedding policy where flexibility is required.
 
-## Feedback / Security
+⸻
 
-* General inquiries: [legal@m7.org](mailto:legal@m7.org)
-* Security issues:   [security@m7.org](mailto:security@m7.org)
+Feedback / Security
+	•	General inquiries: legal@m7.org￼
+	•	Security issues:   security@m7.org￼
+
